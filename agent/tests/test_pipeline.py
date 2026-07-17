@@ -2,7 +2,12 @@
 
 import pytest
 
-from commander_sky.avatar import AvatarConfigError, create_avatar, room_audio_enabled
+from commander_sky.avatar import (
+    AvatarConfigError,
+    character_kwargs,
+    create_avatar,
+    room_audio_enabled,
+)
 from commander_sky.config import AvatarMode, Settings
 from commander_sky.main import SPACE_KEYTERMS, build_session
 
@@ -39,6 +44,23 @@ class TestAvatarAdapter:
     def test_lemonslice_without_character_fails(self, settings: Settings) -> None:
         with pytest.raises(AvatarConfigError, match="AGENT_ID"):
             create_avatar(settings)
+
+    def test_exactly_one_character_kwarg_never_none(self, settings: Settings) -> None:
+        """LemonSlice rejects sessions when >1 identity kwarg is passed — an
+        explicit None counts as passed (regression: crashed live jobs)."""
+        by_id = settings.model_copy(update={"lemonslice_agent_id": "sky-01"})
+        assert character_kwargs(by_id) == {"agent_id": "sky-01"}
+
+        by_image = settings.model_copy(update={"lemonslice_image_url": "https://x/img.png"})
+        assert character_kwargs(by_image) == {"agent_image_url": "https://x/img.png"}
+
+        both = settings.model_copy(
+            update={"lemonslice_agent_id": "sky-01", "lemonslice_image_url": "https://x/img.png"}
+        )
+        assert character_kwargs(both) == {"agent_id": "sky-01"}
+        for kwargs in (character_kwargs(by_id), character_kwargs(by_image)):
+            assert len(kwargs) == 1
+            assert None not in kwargs.values()
 
 
 def test_dry_run_exits_zero(fake_env: dict[str, str]) -> None:

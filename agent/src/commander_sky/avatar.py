@@ -31,14 +31,25 @@ def create_avatar(settings: Settings) -> lemonslice.AvatarSession | None:
         return None
     if settings.lemonslice_api_key is None:
         raise AvatarConfigError("AVATAR_MODE=lemonslice requires LEMONSLICE_API_KEY")
-    if not (settings.lemonslice_agent_id or settings.lemonslice_image_url):
-        raise AvatarConfigError(
-            "AVATAR_MODE=lemonslice requires LEMONSLICE_AGENT_ID or LEMONSLICE_IMAGE_URL"
-        )
     return lemonslice.AvatarSession(
         api_key=settings.lemonslice_api_key.get_secret_value(),
-        agent_id=settings.lemonslice_agent_id,
-        agent_image_url=settings.lemonslice_image_url,
+        **character_kwargs(settings),
+    )
+
+
+def character_kwargs(settings: Settings) -> dict[str, str]:
+    """The one character-identity kwarg LemonSlice accepts.
+
+    The plugin rejects the session if more than one of agent_id/agent_image_url/
+    agent_image is passed — and an explicit ``None`` counts as passed (its own
+    defaults are a NOT_GIVEN sentinel). So: exactly one key, never None values.
+    """
+    if settings.lemonslice_agent_id:
+        return {"agent_id": settings.lemonslice_agent_id}
+    if settings.lemonslice_image_url:
+        return {"agent_image_url": settings.lemonslice_image_url}
+    raise AvatarConfigError(
+        "AVATAR_MODE=lemonslice requires LEMONSLICE_AGENT_ID or LEMONSLICE_IMAGE_URL"
     )
 
 

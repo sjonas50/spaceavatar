@@ -1,19 +1,17 @@
 import { expect, test } from "@playwright/test";
 
-test("home page shows Commander Sky", async ({ page }) => {
+test("home page auto-connects and fails friendly without config", async ({ page }) => {
+  // Dev server runs without LiveKit credentials — the token API returns 500 and
+  // the kid must see a friendly message + retry, never a raw error.
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /Commander Sky/ })).toBeVisible();
+  await expect(page.getByTestId("session-error")).toContainText("mission control");
+  await page.getByTestId("retry-session").click();
+  await expect(page.getByTestId("session-error")).toBeVisible();
 });
 
-test("session page offers the start button and fails friendly without config", async ({
-  page,
-}) => {
-  // Dev server runs without LiveKit credentials — the token API returns 500 and
-  // the kid must see a friendly message, never a raw error.
+test("session route serves the same auto-connect experience", async ({ page }) => {
   await page.goto("/session");
-  const start = page.getByTestId("start-session");
-  await expect(start).toBeVisible();
-  await start.click();
   await expect(page.getByTestId("session-error")).toContainText("mission control");
 });
 

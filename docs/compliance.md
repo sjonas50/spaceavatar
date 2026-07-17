@@ -10,7 +10,7 @@
 | No transcripts persisted | no storage layer exists; nothing written | ✅ built |
 | No conversation content in logs | `metrics.py` numeric allowlist + `test_no_content_logging.py` | ✅ built + tested |
 | Deepgram model-improvement opt-out | `mip_opt_out=True` on every STT connection (`main.py`) | ✅ built |
-| Mic only active on push-to-talk press | `PushToTalkButton.tsx` | ✅ built |
+| Mic posture | `SessionExperience.tsx` (`NEXT_PUBLIC_MIC_MODE`) | ⚠️ **CHANGED 2026-07-17: owner switched default to always-on open mic** (auto-connect on page load, continuous audio streaming, mute toggle). Push-to-talk still available via `NEXT_PUBLIC_MIC_MODE=ptt`. **Counsel must review open-mic before launch** — continuous capture of child audio weakens the "collect to fulfill request, delete promptly" COPPA argument that push-to-talk supported. |
 | No child camera use | `video={false}` in session page | ✅ built |
 | Anonymous sessions (random UUID room/identity, short TTL) | `app/api/token/route.ts` | ✅ built |
 | Avatar never asks for personal info | persona rules + output guard `pii_request` + tests | ✅ built + tested |

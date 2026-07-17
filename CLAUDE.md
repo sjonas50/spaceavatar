@@ -33,7 +33,10 @@ npx playwright test              # e2e
 - **Fictional character**, not Neil Armstrong likeness (no estate licensing). Teaches *about* Armstrong with attribution.
 - **Avatar is swappable** behind `avatar.py` adapter (`AVATAR_MODE=lemonslice|frontend|none`). Anam is ruled out: photoreal-only, conflicts with stylized requirement.
 - **No-retention COPPA architecture**: no audio persisted, no transcripts persisted, **no conversation content in any log line** — metrics only (latency, error rates, guard counts). Deepgram calls always set `mip_opt_out=true`.
-- **Push-to-talk only** — mic active only while button held (COPPA + noise).
+- **Mic mode** — owner decision 2026-07-17: default is auto-connect + always-on
+  open mic with mute toggle (`NEXT_PUBLIC_MIC_MODE=open`). Push-to-talk
+  (`=ptt`) remains available and is the COPPA-preferred launch posture —
+  flagged for counsel review in docs/compliance.md.
 - **Sensitive/distress inputs never reach the freeform LLM** — canned responses only.
 - **Kid-tuned turn-taking**: endpointing delay 0.8–1.0s (kids pause mid-thought), `min_words=3` barge-in.
 
