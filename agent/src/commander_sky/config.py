@@ -36,6 +36,14 @@ class Settings(BaseSettings):
 
     # Avatar
     avatar_mode: AvatarMode = AvatarMode.LEMONSLICE
+    lemonslice_agent_id: str | None = None
+    lemonslice_image_url: str | None = None
+
+    # Models (env-overridable so provider model bumps don't need a code change)
+    llm_model: str = "claude-sonnet-4-6"
+    stt_model: str = "flux-general-en"
+    tts_model: str = "sonic-3.5"
+    tts_voice: str | None = None
 
     # Session policy
     max_session_minutes: int = Field(default=15, ge=1, le=120)
