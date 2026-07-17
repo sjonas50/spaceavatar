@@ -178,9 +178,21 @@ def dry_run() -> int:
     return 0
 
 
+def _export_livekit_env(settings: Settings) -> None:
+    """Expose LiveKit credentials to livekit-agents' CLI/worker layer.
+
+    The framework (and the LemonSlice plugin's room join) reads LIVEKIT_* from
+    process env directly — it doesn't see our pydantic-settings .env resolution.
+    """
+    os.environ.setdefault("LIVEKIT_URL", settings.livekit_url)
+    os.environ.setdefault("LIVEKIT_API_KEY", settings.livekit_api_key.get_secret_value())
+    os.environ.setdefault("LIVEKIT_API_SECRET", settings.livekit_api_secret.get_secret_value())
+
+
 def main() -> None:
     if "dry-run" in sys.argv[1:]:
         raise SystemExit(dry_run())
+    _export_livekit_env(load_settings())
     cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
 
 

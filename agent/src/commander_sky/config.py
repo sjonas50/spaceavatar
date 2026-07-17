@@ -21,7 +21,10 @@ class AvatarMode(StrEnum):
 class Settings(BaseSettings):
     """Agent worker settings, loaded from the environment (or a local .env file)."""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # Repo-root .env is the canonical local secrets file; agent/.env can override.
+    model_config = SettingsConfigDict(
+        env_file=("../.env", ".env"), env_file_encoding="utf-8", extra="ignore"
+    )
 
     # LiveKit
     livekit_url: str = Field(description="wss:// URL of the LiveKit Cloud project")
