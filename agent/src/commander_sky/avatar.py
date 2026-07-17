@@ -33,6 +33,8 @@ def create_avatar(settings: Settings) -> lemonslice.AvatarSession | None:
         raise AvatarConfigError("AVATAR_MODE=lemonslice requires LEMONSLICE_API_KEY")
     return lemonslice.AvatarSession(
         api_key=settings.lemonslice_api_key.get_secret_value(),
+        agent_prompt=settings.avatar_prompt,
+        agent_idle_prompt=settings.avatar_idle_prompt,
         **character_kwargs(settings),
     )
 

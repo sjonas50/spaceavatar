@@ -41,6 +41,16 @@ class Settings(BaseSettings):
     avatar_mode: AvatarMode = AvatarMode.LEMONSLICE
     lemonslice_agent_id: str | None = None
     lemonslice_image_url: str | None = None
+    # Motion/demeanor prompts for LemonSlice's video model. These steer energy
+    # and expressiveness (not exact gestures) — iterate via env, no code change.
+    avatar_prompt: str = (
+        "an animated, enthusiastic astronaut telling stories — expressive face, "
+        "natural relaxed hand gestures while speaking, warm and engaging"
+    )
+    avatar_idle_prompt: str = (
+        "a friendly astronaut listening attentively — relaxed, gently swaying as if "
+        "floating, small natural movements, soft smile"
+    )
 
     # Models (env-overridable so provider model bumps don't need a code change)
     llm_model: str = "claude-sonnet-4-6"
