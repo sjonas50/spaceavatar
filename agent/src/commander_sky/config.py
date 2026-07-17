@@ -44,12 +44,12 @@ class Settings(BaseSettings):
     # Motion/demeanor prompts for LemonSlice's video model. These steer energy
     # and expressiveness (not exact gestures) — iterate via env, no code change.
     avatar_prompt: str = (
-        "an animated, enthusiastic astronaut telling stories — expressive face, "
-        "natural relaxed hand gestures while speaking, warm and engaging"
+        "a calm, friendly astronaut telling stories — subtle natural facial "
+        "expressions, gentle smile, relaxed natural hand gestures while speaking"
     )
     avatar_idle_prompt: str = (
-        "a friendly astronaut listening attentively — relaxed, gently swaying as if "
-        "floating, small natural movements, soft smile"
+        "a friendly astronaut listening — still and relaxed with a gentle floating "
+        "sway, calm neutral face with a hint of a smile"
     )
 
     # Models (env-overridable so provider model bumps don't need a code change)
