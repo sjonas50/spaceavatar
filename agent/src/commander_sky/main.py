@@ -10,15 +10,18 @@ import asyncio
 import os
 import sys
 
-from livekit.agents import Agent, AgentSession, JobContext, RoomOutputOptions, WorkerOptions, cli
+from livekit.agents import AgentSession, JobContext, RoomOutputOptions, WorkerOptions, cli
 from livekit.plugins import anthropic, cartesia, deepgram
 
 from commander_sky.avatar import create_avatar, room_audio_enabled
+from commander_sky.canned import SIGN_OFF, get_canned
 from commander_sky.config import Settings, load_settings
 from commander_sky.facts import load_facts
 from commander_sky.logging import configure_logging, get_logger
 from commander_sky.metrics import log_pipeline_metrics
 from commander_sky.persona import build_system_prompt
+from commander_sky.safety import InputGuard, OutputGuard
+from commander_sky.sky_agent import CommanderSkyAgent
 
 log = get_logger("worker")
 
@@ -45,11 +48,18 @@ SPACE_KEYTERMS = [
     "blast off",
 ]
 
-# Temporary home until canned.py lands in Phase 3.
-SESSION_SIGN_OFF = (
-    "Time for me to go check on the rocket! Thanks for exploring space with me today. "
-    "Keep looking up, space explorer — see you next time!"
-)
+
+def build_agent(settings: Settings) -> CommanderSkyAgent:
+    """Persona agent wrapped in the input/output safety guards."""
+    return CommanderSkyAgent(
+        instructions=build_system_prompt(load_facts()),
+        input_guard=InputGuard(
+            api_key=settings.anthropic_api_key.get_secret_value(),
+            model=settings.guard_model,
+            timeout_s=settings.guard_timeout_s,
+        ),
+        output_guard=OutputGuard(max_chars=settings.output_max_chars),
+    )
 
 
 def build_session(settings: Settings) -> AgentSession:
@@ -95,7 +105,7 @@ async def _end_session_after_limit(session: AgentSession, minutes: int) -> None:
     """Friendly hard stop at the session cap (cost control + kid wellbeing)."""
     await asyncio.sleep(minutes * 60)
     log.info("session_limit_reached", limit_minutes=minutes)
-    await session.say(SESSION_SIGN_OFF, allow_interruptions=False)
+    await session.say(get_canned(SIGN_OFF), allow_interruptions=False)
     await session.aclose()
 
 
@@ -108,8 +118,6 @@ async def entrypoint(ctx: JobContext) -> None:
     session = build_session(settings)
     session.on("metrics_collected", log_pipeline_metrics)
 
-    prompt = build_system_prompt(load_facts())
-
     # Canonical avatar ordering: avatar.start -> wait_for_join -> session.start.
     # audio_enabled must be False in cloud-avatar mode or audio plays twice.
     avatar = create_avatar(settings)
@@ -118,7 +126,7 @@ async def entrypoint(ctx: JobContext) -> None:
         await avatar.wait_for_join()
 
     await session.start(
-        agent=Agent(instructions=prompt),
+        agent=build_agent(settings),
         room=ctx.room,
         room_output_options=RoomOutputOptions(audio_enabled=room_audio_enabled(settings)),
     )
@@ -159,10 +167,11 @@ def dry_run() -> int:
         os.environ[key] = placeholders[key]
 
     settings = load_settings()
-    prompt = build_system_prompt(load_facts())
+    agent = build_agent(settings)
     session = build_session(settings)
     audio = room_audio_enabled(settings)
-    print(f"dry-run OK: prompt={len(prompt)} chars, avatar_mode={settings.avatar_mode.value}, ")
+    agent_kind = type(agent).__name__
+    print(f"dry-run OK: avatar_mode={settings.avatar_mode.value}, guarded_agent={agent_kind}")
     print(f"  agent_audio_enabled={audio}, stubbed_keys={stubbed or 'none'}")
     # AgentSession spins up background machinery lazily; nothing to close here.
     assert session is not None

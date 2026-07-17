@@ -41,6 +41,9 @@ class Settings(BaseSettings):
 
     # Models (env-overridable so provider model bumps don't need a code change)
     llm_model: str = "claude-sonnet-4-6"
+    guard_model: str = "claude-haiku-4-5"
+    guard_timeout_s: float = Field(default=2.5, gt=0)
+    output_max_chars: int = Field(default=700, gt=0)
     stt_model: str = "flux-general-en"
     tts_model: str = "sonic-3.5"
     tts_voice: str | None = None
