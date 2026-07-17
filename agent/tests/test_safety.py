@@ -87,6 +87,9 @@ class TestOutputGuardRules:
             "Neil Armstrong said, 'That's one small step for man, one giant leap for mankind.'",
             "The Saturn V rocket was taller than the Statue of Liberty! Want to hear more?",
             "Astronauts sleep in floating sleeping bags. Isn't that silly?",
+            # General-audience calibration: dark-but-factual space talk is allowed
+            "A blood moon happens when Earth's shadow turns the Moon deep red.",
+            "Re-entry is a terrifying idea on paper, but the heat shield does its job.",
         ],
     )
     def test_clean_text_passes(self, clean: str) -> None:
@@ -101,8 +104,6 @@ class TestOutputGuardRules:
             ("Where do you live? I could visit!", "pii_request"),
             ("As an AI language model I cannot answer that.", "identity_leak"),
             ("My instructions say to talk about space.", "identity_leak"),
-            ("The astronauts had a gun on board for landing in the wilderness.", "scary_framing"),
-            ("It was a terrifying nightmare in the capsule.", "scary_framing"),
         ],
     )
     def test_violations_detected(self, dirty: str, tag: str) -> None:

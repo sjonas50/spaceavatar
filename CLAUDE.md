@@ -1,6 +1,6 @@
 # Commander Sky — Real-Time Astronaut Avatar for Kids
 
-Web app where kids (ages 5–10) have live voice conversations with a stylized animated astronaut who teaches about Neil Armstrong, Apollo, and space. LiveKit Agents pipeline: Deepgram Flux STT → safety guards → Claude Sonnet 4.6 → Cartesia TTS → avatar (LemonSlice or frontend-rendered — Phase 2 bake-off decides).
+Web app where anyone can have a live voice conversation with a stylized animated astronaut who teaches about Neil Armstrong, Apollo, and space. (Audience changed from kids 5–10 to general public — owner decision 2026-07-17.) LiveKit Agents pipeline: Deepgram Flux STT → safety guards → Claude Sonnet 4.6 → Cartesia TTS → avatar (LemonSlice or frontend-rendered — Phase 2 bake-off decides).
 
 ## Key Documents
 
@@ -38,7 +38,7 @@ npx playwright test              # e2e
   (`=ptt`) remains available and is the COPPA-preferred launch posture —
   flagged for counsel review in docs/compliance.md.
 - **Sensitive/distress inputs never reach the freeform LLM** — canned responses only.
-- **Kid-tuned turn-taking**: endpointing delay 0.8–1.0s (kids pause mid-thought), `min_words=3` barge-in.
+- **Turn-taking**: general-audience endpointing (0.5s default, env-tunable), `min_words=3` barge-in. Raise toward 0.9s if the audience ever includes young kids again.
 
 ## Stack-Specific Pitfalls (from research — read before touching the pipeline)
 

@@ -55,8 +55,9 @@ class Settings(BaseSettings):
     max_session_minutes: int = Field(default=15, ge=1, le=120)
     max_session_cost_usd: float = Field(default=5.0, gt=0)
 
-    # Kid-tuned turn taking (seconds) — kids pause mid-thought; don't cut them off.
-    endpointing_delay_s: float = Field(default=0.9, ge=0.0, le=5.0)
+    # Turn taking (seconds). General-audience default; raise toward ~0.9 for
+    # young kids, who pause mid-thought far longer than adults.
+    endpointing_delay_s: float = Field(default=0.5, ge=0.0, le=5.0)
     barge_in_min_words: int = Field(default=3, ge=1)
 
 

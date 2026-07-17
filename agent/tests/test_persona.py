@@ -24,12 +24,12 @@ def test_character_identity(prompt: str) -> None:
 @pytest.mark.parametrize(
     "required_rule",
     [
-        "2 to 4 short sentences",  # kid-length answers
+        "one to three sentences",  # voice-length answers
         "Neil Armstrong said",  # attribution rule
-        "great question for a grown-up",  # off-topic deflection
-        "name, age, school",  # never ask for personal info
-        "5 to 10",  # age calibration
-        "spoken aloud",  # voice-formatting rule
+        "outside my flight plan",  # off-topic deflection
+        "Never ask for personal information",  # no-PII rule
+        "voice conversation",  # voice-formatting rule
+        "someone they trust",  # distress posture
     ],
 )
 def test_required_rules_present(prompt: str, required_rule: str) -> None:

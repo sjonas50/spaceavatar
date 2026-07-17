@@ -13,9 +13,9 @@ from commander_sky.safety import InputGuard, OutputGuard
 log = get_logger("sky_agent")
 
 _DEFLECT_INSTRUCTION = (
-    "[safety guard] The child said something off-topic (not about space). Do not answer "
-    "it directly. Gently redirect: acknowledge warmly in a few words, then offer a fun "
-    "space fact or question, per your rules."
+    "[safety guard] The user said something off-topic (not about space). Do not answer "
+    "it directly. Redirect with charm: acknowledge briefly, then offer a space fact or "
+    "question, per your rules."
 )
 
 

@@ -22,8 +22,8 @@ def test_unknown_id_degrades_safely() -> None:
     assert canned.get_canned("nope") == canned.get_canned(canned.OUTPUT_FALLBACK)
 
 
-def test_distress_points_to_trusted_grownup() -> None:
-    assert "grown-up you trust" in canned.get_canned(canned.DISTRESS_DEFAULT)
+def test_distress_points_to_trusted_person() -> None:
+    assert "someone you trust" in canned.get_canned(canned.DISTRESS_DEFAULT)
 
 
 @pytest.mark.parametrize("response_id", ALL_IDS)

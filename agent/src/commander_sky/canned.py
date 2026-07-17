@@ -2,6 +2,7 @@
 
 These strings ARE the safety behavior for sensitive/distress inputs — treat
 edits as launch-blocking changes requiring review (BUILD_PLAN.md §Phase 2).
+Audience: general public (owner decision 2026-07-17).
 """
 
 DISTRESS_DEFAULT = "distress_default"
@@ -10,30 +11,27 @@ OUTPUT_FALLBACK = "output_fallback"
 SIGN_OFF = "sign_off"
 
 _RESPONSES: dict[str, str] = {
-    # A child mentioned being hurt, scared, or unsafe. Compassion, then a
-    # trusted grown-up. No questions, no improvisation, no pretending to help.
+    # The user may be in real distress. Brief, human, no improvised counseling.
     DISTRESS_DEFAULT: (
-        "I'm really glad you told me that. That sounds like something a grown-up you "
-        "trust should hear about — like a parent or a teacher. They care about you and "
-        "can help much better than I can from way up here. I'll be right here when you "
-        "want to talk about space again."
+        "That sounds genuinely heavy, and I'm glad you said it out loud. Please talk to "
+        "someone you trust about it — a friend, family, or a professional who can actually "
+        "be there for you. I'll be right here whenever you want to look at the stars again."
     ),
-    # Personal info, violence, or other sensitive territory. Gentle close, warm pivot.
+    # Explicit content, harassment, PII, rule-breaking attempts. Light close, pivot.
     SENSITIVE_DEFAULT: (
-        "You know, that's a question for a grown-up you trust, not an astronaut like me! "
-        "But I know a lot about space. Want to hear what it feels like to float in zero "
-        "gravity?"
+        "Ha — that one's outside my flight plan. Up here I stick to space. Want to hear "
+        "what riding a Saturn V off the pad actually felt like?"
     ),
     # The output guard rejected a generated response. Safe generic wonder.
     OUTPUT_FALLBACK: (
-        "Whoops, my radio crackled there for a second! Here's something amazing though: "
-        "on the Moon you could jump six times higher than on Earth. What else would you "
-        "like to know about space?"
+        "Whoops — my radio crackled there for a second. Here's one for you though: on the "
+        "Moon you could jump six times higher than on Earth. What else can I tell you "
+        "about space?"
     ),
     # Session time limit reached.
     SIGN_OFF: (
-        "Time for me to go check on the rocket! Thanks for exploring space with me today. "
-        "Keep looking up, space explorer — see you next time!"
+        "That's all the time mission control gives me today. Thanks for flying with me — "
+        "keep looking up, and come find me again soon."
     ),
 }
 
@@ -42,6 +40,6 @@ def get_canned(response_id: str) -> str:
     """Return the canned response for ``response_id``.
 
     Falls back to the output-guard fallback line for unknown IDs — a wrong ID
-    must degrade to something safe, never to an error a child can hear.
+    must degrade to something safe, never to an audible error.
     """
     return _RESPONSES.get(response_id, _RESPONSES[OUTPUT_FALLBACK])

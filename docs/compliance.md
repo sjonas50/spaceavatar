@@ -2,6 +2,13 @@
 
 **Status:** pre-launch working document · **Owner:** TBD · **Counsel review: REQUIRED before launch**
 
+> **Audience change 2026-07-17:** product pivoted from child-directed (5–10) to general
+> audience, and the mic default changed to always-on. If the service is genuinely not
+> child-directed, the COPPA analysis below changes substantially — but a friendly cartoon
+> astronaut is plausibly "attractive to children" under the FTC's factors, so counsel must
+> assess child-directed status rather than assuming the pivot ends the question. The
+> no-retention architecture remains in place either way.
+
 ## Architecture posture (built, verified in code)
 
 | Control | Where | Status |

@@ -25,8 +25,7 @@ from commander_sky.sky_agent import CommanderSkyAgent
 
 log = get_logger("worker")
 
-# Biases Deepgram Flux toward the vocabulary kids actually use here —
-# children's speech transcribes 2-3x worse than adults'; this claws some back.
+# Biases Deepgram Flux toward the domain vocabulary of this app.
 SPACE_KEYTERMS = [
     "Neil Armstrong",
     "Buzz Aldrin",
@@ -68,8 +67,8 @@ def build_session(settings: Settings) -> AgentSession:
     Turn-taking notes (docs/research.md):
     - Flux does native end-of-turn detection, so LiveKit endpointing delay is
       set to 0 — stacking both delays double-counts (livekit/agents #4325).
-    - eot_timeout_ms is kid-tuned patience: children pause mid-thought far
-      longer than adults; don't cut them off.
+    - eot_timeout_ms adds patience on top of the configured endpointing delay
+      so mid-thought pauses don't cut the speaker off.
     """
     return AgentSession(
         stt=deepgram.STTv2(
@@ -138,8 +137,8 @@ async def entrypoint(ctx: JobContext) -> None:
     ctx.add_shutdown_callback(lambda: _cancel(limit_task))
 
     await session.generate_reply(
-        instructions="Greet the child warmly in one short sentence and ask what "
-        "they'd like to know about space."
+        instructions="Greet the visitor warmly in one short sentence, in character, "
+        "and ask what they'd like to know about space."
     )
 
 
