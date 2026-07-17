@@ -1,14 +1,10 @@
 "use client";
 
-import {
-  LiveKitRoom,
-  RoomAudioRenderer,
-  VideoTrack,
-  useTracks,
-} from "@livekit/components-react";
-import { Track } from "livekit-client";
+import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
 import { useCallback, useState } from "react";
+import { AvatarView } from "@/components/AvatarView";
 import { PushToTalkButton } from "@/components/PushToTalkButton";
+import { buildConnectOptions } from "@/lib/livekit";
 
 type ConnectionDetails = {
   serverUrl: string;
@@ -38,15 +34,21 @@ export default function SessionPage() {
   if (!details) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-slate-950 text-white">
-        <h1 className="text-4xl font-bold">🚀 Commander Sky</h1>
+        <div className="animate-[float_3s_ease-in-out_infinite] text-8xl">🧑‍🚀</div>
+        <h1 className="text-4xl font-bold">Commander Sky</h1>
         <button
           onClick={start}
           disabled={connecting}
+          data-testid="start-session"
           className="rounded-full bg-emerald-500 px-10 py-5 text-2xl font-bold shadow-xl transition-transform active:scale-95 disabled:opacity-50"
         >
           {connecting ? "Calling the station…" : "Talk to Commander Sky!"}
         </button>
-        {error && <p className="text-amber-300">{error}</p>}
+        {error && (
+          <p className="text-amber-300" data-testid="session-error">
+            {error}
+          </p>
+        )}
       </main>
     );
   }
@@ -58,32 +60,15 @@ export default function SessionPage() {
       connect
       audio={false} // mic stays off until the talk button enables it
       video={false} // we never use the child's camera
+      connectOptions={buildConnectOptions()}
       onDisconnected={() => setDetails(null)}
       className="flex min-h-screen flex-col items-center justify-between bg-slate-950 py-8 text-white"
     >
       <AvatarView />
-      <PushToTalkButton />
+      <div className="pb-4">
+        <PushToTalkButton />
+      </div>
       <RoomAudioRenderer />
     </LiveKitRoom>
-  );
-}
-
-/** Renders the avatar's video track fullscreen-ish; friendly idle text until it joins. */
-function AvatarView() {
-  const tracks = useTracks([Track.Source.Camera], { onlySubscribed: true });
-  const avatarTrack = tracks[0];
-
-  if (!avatarTrack) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-2xl text-slate-300">
-        <span className="animate-bounce">🧑‍🚀 Commander Sky is floating over…</span>
-      </div>
-    );
-  }
-  return (
-    <VideoTrack
-      trackRef={avatarTrack}
-      className="max-h-[70vh] flex-1 rounded-3xl object-contain"
-    />
   );
 }
