@@ -70,13 +70,18 @@ def build_session(settings: Settings) -> AgentSession:
     - eot_timeout_ms adds patience on top of the configured endpointing delay
       so mid-thought pauses don't cut the speaker off.
     """
+    stt_kwargs: dict = {}
+    if settings.eager_eot_threshold > 0:
+        stt_kwargs["eager_eot_threshold"] = settings.eager_eot_threshold
+
     return AgentSession(
         stt=deepgram.STTv2(
             model=settings.stt_model,
             api_key=settings.deepgram_api_key.get_secret_value(),
             keyterm=SPACE_KEYTERMS,
             eot_timeout_ms=int(settings.endpointing_delay_s * 1000) + 2000,
-            mip_opt_out=True,  # COPPA: never contribute child audio to model improvement
+            mip_opt_out=True,  # never contribute user audio to model improvement
+            **stt_kwargs,
         ),
         llm=anthropic.LLM(
             model=settings.llm_model,
@@ -95,7 +100,10 @@ def build_session(settings: Settings) -> AgentSession:
                 "min_words": settings.barge_in_min_words,
                 "false_interruption_timeout": 1.2,
             },
-            "preemptive_generation": {"enabled": True},
+            # preemptive_tts starts synthesis before the turn is confirmed;
+            # combined with Flux eager EOT this overlaps LLM+TTS with the tail
+            # of the user's utterance instead of waiting for confirmation.
+            "preemptive_generation": {"enabled": True, "preemptive_tts": True},
         },
     )
 

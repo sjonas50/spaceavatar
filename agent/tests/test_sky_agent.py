@@ -26,6 +26,24 @@ class TestOnUserTurnCompleted:
         await _agent(_make_guard("fine")).on_user_turn_completed(None, message)  # type: ignore[arg-type]
         assert message.content == ["how big is the moon?"]
 
+    async def test_guard_latency_logged_without_content(self) -> None:
+        """guard_ms must be observable (it's serial reply-path time) — text must not."""
+        import structlog
+
+        captured: list[dict] = []
+
+        def sink(logger: object, method: str, event_dict: dict) -> dict:
+            captured.append(dict(event_dict))
+            return event_dict
+
+        structlog.configure(processors=[sink, structlog.processors.JSONRenderer()])
+        secret = "my name is emma and i live on oak street"
+        await _agent(_make_guard("fine")).on_user_turn_completed(None, _message(secret))  # type: ignore[arg-type]
+
+        verdicts = [c for c in captured if c.get("event") == "input_guard_verdict"]
+        assert verdicts and isinstance(verdicts[0]["guard_ms"], float)
+        assert secret not in str(captured)
+
     async def test_off_topic_rewrites_to_deflection(self) -> None:
         message = _message("what's your favorite video game?")
         await _agent(_make_guard("off_topic")).on_user_turn_completed(None, message)  # type: ignore[arg-type]

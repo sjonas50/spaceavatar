@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     # young kids, who pause mid-thought far longer than adults.
     endpointing_delay_s: float = Field(default=0.5, ge=0.0, le=5.0)
     barge_in_min_words: int = Field(default=3, ge=1)
+    # Flux eager end-of-turn confidence (0.3-0.9). Fires a provisional
+    # end-of-turn early so the LLM starts before the turn is confirmed —
+    # required for preemptive generation in STT mode. <=0 disables.
+    eager_eot_threshold: float = Field(default=0.6, ge=0.0, le=0.9)
 
 
 def load_settings() -> Settings:

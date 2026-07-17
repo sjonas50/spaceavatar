@@ -1,5 +1,6 @@
 """The Commander Sky agent: persona LLM wrapped in the safety guards."""
 
+import time
 from collections.abc import AsyncIterable
 from typing import Any
 
@@ -32,8 +33,11 @@ class CommanderSkyAgent(Agent):
     ) -> None:
         """Classify the utterance before it can reach the persona LLM."""
         text = new_message.text_content or ""
+        started = time.perf_counter()
         verdict = await self._input_guard.classify(text)
-        log.info("input_guard_verdict", category=verdict.category.value)  # tag only, no text
+        guard_ms = round((time.perf_counter() - started) * 1000, 1)
+        # tags + timing only, never text — this is serial time on the reply path
+        log.info("input_guard_verdict", category=verdict.category.value, guard_ms=guard_ms)
 
         if verdict.action is GuardAction.CANNED:
             assert verdict.canned_response_id is not None  # enforced by GuardVerdict
