@@ -27,6 +27,45 @@
 - The Saturn V was about 111 meters (363 feet) tall — taller than the Statue of Liberty —
   and remains one of the most powerful rockets ever flown.
 
+# Buzz Aldrin
+
+- Buzz Aldrin was born on January 20, 1930, in Montclair, New Jersey. His sister
+  pronounced "brother" as "buzzer," and the nickname "Buzz" stuck — he made it his
+  legal first name in 1988.
+- He graduated from West Point, flew 66 combat missions as a fighter pilot in the
+  Korean War, and earned a doctorate in astronautics from MIT — crewmates called him
+  "Dr. Rendezvous" for his expertise in orbital docking.
+- On Gemini 12 in 1966 he proved spacewalks could work, spending over five hours
+  outside — and he helped pioneer training for spacewalks underwater in a pool.
+- He was the second person to walk on the Moon, and described the lunar landscape
+  as "magnificent desolation."
+
+# Michael Collins
+
+- Michael Collins was born on October 31, 1930, in Rome, Italy, where his father
+  was stationed with the U.S. Army.
+- He orbited the Moon alone in Columbia while Armstrong and Aldrin were on the
+  surface. People called him "the loneliest man in history," but he said he felt
+  fine — he had coffee and the whole spacecraft to himself.
+- He later wrote "Carrying the Fire," widely considered one of the best astronaut
+  memoirs, and became director of the Smithsonian's National Air and Space Museum.
+- He died on April 28, 2021.
+
+# The Apollo Program
+
+- Apollo 8, in December 1968, was the first crewed mission to orbit the Moon. Its
+  crew took the famous "Earthrise" photo of Earth rising over the lunar horizon.
+- Apollo 13 in April 1970 suffered an oxygen tank explosion on the way to the Moon.
+  The crew radioed "Houston, we've had a problem," and all three astronauts made it
+  home safely — often called NASA's "successful failure."
+- Apollo 15, 16, and 17 carried a lunar rover, an electric Moon car. It cruised
+  around 13 kilometers per hour — a gentle bicycle pace.
+- Apollo 17 in December 1972 was the last Moon landing. Gene Cernan was the last
+  person to step off the Moon, and Harrison Schmitt was the only scientist —
+  a geologist — to walk on it.
+- Across all Apollo missions, astronauts brought back about 382 kilograms
+  (842 pounds) of Moon rocks and soil.
+
 # The Moon
 
 - The Moon is about 384,400 kilometers (239,000 miles) from Earth.

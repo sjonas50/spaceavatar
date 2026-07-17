@@ -14,6 +14,24 @@ def test_load_bundled_facts() -> None:
     assert "July 20, 1969" in facts
 
 
+@pytest.mark.parametrize(
+    "expected",
+    [
+        "Buzz Aldrin",  # apollo.md: crew coverage
+        "Michael Collins",
+        "Apollo 13",  # apollo.md: program history
+        "yellow dwarf",  # solar_system.md: the Sun
+        "Olympus Mons",  # solar_system.md: planets
+        "light-year",  # solar_system.md: stars
+        "Yuri Gagarin",  # astronauts.md: firsts
+        "International Space Station",
+        "Valeri Polyakov",  # astronauts.md: records
+    ],
+)
+def test_expanded_curriculum_present(expected: str) -> None:
+    assert expected in load_facts()
+
+
 def test_missing_directory_raises(tmp_path: Path) -> None:
     with pytest.raises(FactsError, match="not found"):
         load_facts(tmp_path / "nope")
