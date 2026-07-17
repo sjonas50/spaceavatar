@@ -1,9 +1,17 @@
 import { AccessToken } from "livekit-server-sdk";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/ratelimit";
 
 // Mints a short-lived LiveKit token for one conversation session.
 // COPPA: identity and room are random UUIDs — nothing links a session to a child.
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const limit = checkRateLimit(ip);
+  if (!limit.allowed) {
+    // 429 with no detail — the client shows its own friendly message.
+    return NextResponse.json({ error: "try again later" }, { status: 429 });
+  }
+
   const serverUrl = process.env.LIVEKIT_URL;
   const apiKey = process.env.LIVEKIT_API_KEY;
   const apiSecret = process.env.LIVEKIT_API_SECRET;
