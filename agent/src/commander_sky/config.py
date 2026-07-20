@@ -74,6 +74,11 @@ class Settings(BaseSettings):
     # required for preemptive generation in STT mode. <=0 disables.
     eager_eot_threshold: float = Field(default=0.6, ge=0.0, le=0.9)
 
+    # Proactive engagement: after this many quiet seconds the avatar offers a
+    # fun fact or the quiz, at most idle_nudge_max times in a row. 0 disables.
+    idle_nudge_s: float = Field(default=30.0, ge=0.0)
+    idle_nudge_max: int = Field(default=2, ge=0)
+
 
 def load_settings() -> Settings:
     """Load settings from the environment, failing fast on missing required keys."""

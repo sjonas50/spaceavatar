@@ -2,14 +2,28 @@
 
 import time
 from collections.abc import AsyncIterable
-from typing import Any
+from typing import Any, Literal
 
-from livekit.agents import Agent, ModelSettings, StopResponse, llm
+from livekit.agents import Agent, ModelSettings, StopResponse, function_tool, llm
 
+from commander_sky import skytools
 from commander_sky.canned import get_canned
 from commander_sky.logging import get_logger
 from commander_sky.models import GuardAction
 from commander_sky.safety import InputGuard, OutputGuard
+
+GalleryImage = Literal[
+    "saturn",
+    "jupiter",
+    "mars",
+    "moon",
+    "earthrise",
+    "apollo11_flag",
+    "apollo11_crew",
+    "saturn_v",
+    "iss",
+    "milky_way",
+]
 
 log = get_logger("sky_agent")
 
@@ -52,3 +66,33 @@ class CommanderSkyAgent(Agent):
     async def tts_node(self, text: AsyncIterable[str], model_settings: ModelSettings) -> Any:
         """Every generated sentence passes the output guard before synthesis."""
         return Agent.default.tts_node(self, self._output_guard.guard_stream(text), model_settings)
+
+    # --- Interactive tools -------------------------------------------------
+
+    @function_tool
+    async def show_picture(self, image_id: GalleryImage) -> str:
+        """Show a picture on the visitor's screen while you talk about it.
+
+        Use when you START talking about something in the gallery — the planet,
+        mission, or object at hand. Show at most one picture per topic; never
+        call repeatedly for the same subject.
+        """
+        return await skytools.show_image(image_id)
+
+    @function_tool
+    async def get_space_station_location(self) -> str:
+        """Get the International Space Station's live position right now.
+
+        Use when the visitor asks where the ISS is, or to make the station feel
+        real while discussing it.
+        """
+        return await skytools.fetch_iss_position()
+
+    @function_tool
+    async def get_next_rocket_launch(self) -> str:
+        """Get the next real scheduled rocket launch (live data).
+
+        Use when the visitor asks about upcoming launches or what's happening
+        in spaceflight right now.
+        """
+        return await skytools.fetch_next_launch()

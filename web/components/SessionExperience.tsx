@@ -4,6 +4,7 @@ import { LiveKitRoom, RoomAudioRenderer, useLocalParticipant } from "@livekit/co
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AvatarView } from "@/components/AvatarView";
 import { PushToTalkButton } from "@/components/PushToTalkButton";
+import { SpaceOverlay } from "@/components/SpaceOverlay";
 import { buildConnectOptions } from "@/lib/livekit";
 
 // "open": mic streams continuously from page load (owner decision 2026-07-17).
@@ -78,8 +79,9 @@ export function SessionExperience() {
         startedRef.current = false;
         setDetails(null);
       }}
-      className="flex min-h-screen flex-col items-center justify-between bg-slate-950 py-8 text-white"
+      className="relative flex min-h-screen flex-col items-center justify-between bg-slate-950 py-8 text-white"
     >
+      <SpaceOverlay />
       <AvatarView />
       <div className="pb-4">{MIC_MODE === "open" ? <MicControl /> : <PushToTalkButton />}</div>
       <RoomAudioRenderer />

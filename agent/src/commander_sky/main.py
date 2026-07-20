@@ -108,6 +108,42 @@ def build_session(settings: Settings) -> AgentSession:
     )
 
 
+async def _idle_nudge_loop(session: AgentSession, settings: Settings) -> None:
+    """Proactive engagement: after a quiet spell, offer a fun fact or the quiz.
+
+    Nudges stop after ``idle_nudge_max`` in a row so a walked-away visitor gets
+    silence, not a monologue; any user speech re-arms the counter.
+    """
+    if settings.idle_nudge_s <= 0:
+        return
+    state = {"last_activity": asyncio.get_running_loop().time(), "nudges_in_a_row": 0}
+
+    def _on_item(ev: object) -> None:
+        state["last_activity"] = asyncio.get_running_loop().time()
+        if getattr(getattr(ev, "item", None), "role", None) == "user":
+            state["nudges_in_a_row"] = 0
+
+    session.on("conversation_item_added", _on_item)
+
+    while True:
+        await asyncio.sleep(5)
+        quiet_for = asyncio.get_running_loop().time() - state["last_activity"]
+        if (
+            quiet_for >= settings.idle_nudge_s
+            and state["nudges_in_a_row"] < settings.idle_nudge_max
+            and session.agent_state == "listening"
+        ):
+            state["nudges_in_a_row"] += 1
+            state["last_activity"] = asyncio.get_running_loop().time()
+            log.info("idle_nudge", count=state["nudges_in_a_row"])
+            session.generate_reply(
+                instructions="The visitor has been quiet for a while. In one or two "
+                "sentences, offer either a single enticing fun fact from your notes "
+                "or a quick space quiz — then invite a response. Do not mention the "
+                "silence."
+            )
+
+
 async def _end_session_after_limit(session: AgentSession, minutes: int) -> None:
     """Friendly hard stop at the session cap (cost control + kid wellbeing)."""
     await asyncio.sleep(minutes * 60)
@@ -142,7 +178,9 @@ async def entrypoint(ctx: JobContext) -> None:
     limit_task = asyncio.create_task(
         _end_session_after_limit(session, settings.max_session_minutes)
     )
+    nudge_task = asyncio.create_task(_idle_nudge_loop(session, settings))
     ctx.add_shutdown_callback(lambda: _cancel(limit_task))
+    ctx.add_shutdown_callback(lambda: _cancel(nudge_task))
 
     await session.generate_reply(
         instructions="Greet the visitor warmly in one short sentence, in character, "
