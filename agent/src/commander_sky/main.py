@@ -13,6 +13,7 @@ import sys
 from livekit.agents import AgentSession, JobContext, RoomOutputOptions, WorkerOptions, cli
 from livekit.plugins import anthropic, cartesia, deepgram
 
+from commander_sky import skytools
 from commander_sky.avatar import create_avatar, room_audio_enabled
 from commander_sky.canned import SIGN_OFF, get_canned
 from commander_sky.config import Settings, load_settings
@@ -160,6 +161,11 @@ async def entrypoint(ctx: JobContext) -> None:
 
     session = build_session(settings)
     session.on("metrics_collected", log_pipeline_metrics)
+
+    # Pre-warm the slow launch API off the critical path — the first live call
+    # can take many seconds; warming at session start makes the tool instant.
+    prewarm_task = asyncio.create_task(skytools.fetch_next_launch())
+    ctx.add_shutdown_callback(lambda: _cancel(prewarm_task))
 
     # Canonical avatar ordering: avatar.start -> wait_for_join -> session.start.
     # audio_enabled must be False in cloud-avatar mode or audio plays twice.

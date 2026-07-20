@@ -21,7 +21,7 @@ log = get_logger("skytools")
 UI_TOPIC = "ui"
 
 GALLERY: dict[str, dict[str, str]] = {
-    "saturn": {"src": "/space/saturn.jpg", "caption": "Saturn's rings, seen by Cassini"},
+    "saturn": {"src": "/space/saturn.jpg", "caption": "Saturn, seen by Cassini"},
     "jupiter": {"src": "/space/jupiter.jpg", "caption": "Jupiter with the Juno spacecraft"},
     "mars": {"src": "/space/mars.jpg", "caption": "Mars, the red planet"},
     "moon": {"src": "/space/moon.jpg", "caption": "Our Moon"},
@@ -71,7 +71,10 @@ async def show_image(image_id: str) -> str:
     sent = await publish_ui({"type": "show_image", "id": image_id, **entry})
     if not sent:
         return "The screen isn't available right now. Continue without the picture."
-    return f"On screen now: {entry['caption']}. React to it briefly and naturally."
+    return (
+        f"On screen now: {entry['caption']}. Keep answering the visitor's actual "
+        "question — the picture just illustrates it."
+    )
 
 
 async def fetch_iss_position(http: aiohttp.ClientSession | None = None) -> str:

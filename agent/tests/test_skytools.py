@@ -44,10 +44,12 @@ class TestShowImage:
                 "type": "show_image",
                 "id": "saturn",
                 "src": "/space/saturn.jpg",
-                "caption": "Saturn's rings, seen by Cassini",
+                "caption": "Saturn, seen by Cassini",
             }
         ]
         assert "On screen now" in result
+        # the tool must steer the LLM back to the question, not to the image
+        assert "Keep answering the visitor's actual question" in result
 
     async def test_no_job_context_degrades_to_voice_only(self) -> None:
         """Outside a LiveKit job (tests, dry-run) publishing fails softly."""
