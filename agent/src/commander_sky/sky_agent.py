@@ -37,17 +37,28 @@ _DEFLECT_INSTRUCTION = (
 def enable_guard_speculation(session: Any, agent: "CommanderSkyAgent") -> None:
     """Overlap guard classification with the user's speech.
 
-    On every final transcript chunk we speculatively classify the
-    accumulated utterance; by end-of-turn the verdict is usually ready and
-    on_user_turn_completed's await is near-instant. Safety is unchanged —
+    Speculative classification starts on interim transcripts (throttled — the
+    final often only arrives at the end-of-turn boundary, too late to overlap)
+    and again on each final chunk. By end-of-turn the verdict is usually ready
+    and on_user_turn_completed's await is near-instant. Safety is unchanged —
     the persona LLM still waits for the verdict.
     """
     buffer: list[str] = []
+    last_interim_spec = [0.0]
+    interim_throttle_s = 0.7
 
     def _on_transcribed(ev: Any) -> None:
-        if getattr(ev, "is_final", False) and ev.transcript.strip():
-            buffer.append(ev.transcript)
+        text = (getattr(ev, "transcript", "") or "").strip()
+        if not text:
+            return
+        if getattr(ev, "is_final", False):
+            buffer.append(text)
             agent._input_guard.speculate(" ".join(buffer))
+        else:
+            now = time.perf_counter()
+            if now - last_interim_spec[0] >= interim_throttle_s:
+                last_interim_spec[0] = now
+                agent._input_guard.speculate(" ".join([*buffer, text]))
 
     def _on_item_added(ev: Any) -> None:
         if getattr(getattr(ev, "item", None), "role", None) == "user":
