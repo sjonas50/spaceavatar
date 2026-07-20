@@ -59,20 +59,59 @@ FAIL_CLOSED_VERDICT = _CATEGORY_TO_VERDICT[GuardCategory.SENSITIVE]
 
 
 class InputGuard:
-    """Classifies each utterance with a fast small model. Fails closed."""
+    """Classifies each utterance with a fast small model. Fails closed.
+
+    Latency design: ``speculate()`` may be called with partial transcripts while
+    the user is still speaking. Classification then overlaps their speech, and
+    ``classify()`` at end-of-turn usually just awaits an already-finished task —
+    near-zero serial cost on the reply path. The invariant is unchanged: the
+    persona LLM never sees an utterance whose verdict hasn't arrived.
+    """
+
+    _MAX_SPECULATIONS = 8
 
     def __init__(self, api_key: str, model: str = "claude-haiku-4-5", timeout_s: float = 2.5):
         self._client = AsyncAnthropic(api_key=api_key)
         self._model = model
         self._timeout_s = timeout_s
+        self._speculations: dict[str, asyncio.Task[GuardVerdict]] = {}
 
-    async def classify(self, text: str) -> GuardVerdict:
-        """Classify one utterance into a GuardVerdict.
+    @staticmethod
+    def _key(text: str) -> str:
+        return " ".join(text.split()).lower()
 
-        Any failure — timeout, API error, unparseable output — returns the
-        fail-closed (sensitive/canned) verdict. The freeform LLM never sees an
-        unclassified utterance.
+    def speculate(self, text: str) -> None:
+        """Start classifying ``text`` in the background (idempotent per text)."""
+        key = self._key(text)
+        if not key or key in self._speculations:
+            return
+        if len(self._speculations) >= self._MAX_SPECULATIONS:
+            self._clear_speculations()
+        self._speculations[key] = asyncio.create_task(self._classify_now(text))
+
+    def _clear_speculations(self) -> None:
+        for task in self._speculations.values():
+            task.cancel()
+        self._speculations.clear()
+
+    async def classify(self, text: str) -> tuple[GuardVerdict, bool]:
+        """Classify one utterance; returns (verdict, was_speculative_hit).
+
+        Uses a finished/running speculation when the final text matches one we
+        started mid-utterance; otherwise classifies fresh. Stale speculations
+        are cancelled either way.
         """
+        task = self._speculations.pop(self._key(text), None)
+        self._clear_speculations()  # anything left is a stale prefix
+        if task is not None:
+            try:
+                return await task, True
+            except asyncio.CancelledError:  # pragma: no cover - defensive
+                pass
+        return await self._classify_now(text), False
+
+    async def _classify_now(self, text: str) -> GuardVerdict:
+        """Classify immediately. Any failure returns the fail-closed verdict."""
         if not text.strip():
             return _CATEGORY_TO_VERDICT[GuardCategory.FINE]
         try:

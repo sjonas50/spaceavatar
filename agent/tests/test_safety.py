@@ -24,8 +24,10 @@ def _make_guard(
     label: str = "fine", *, error: Exception | None = None, delay: float = 0.0
 ) -> InputGuard:
     guard = InputGuard(api_key="fake", timeout_s=0.2)
+    guard.test_calls = 0  # type: ignore[attr-defined]
 
     async def fake_create(**_: object) -> SimpleNamespace:
+        guard.test_calls += 1  # type: ignore[attr-defined]
         if delay:
             await asyncio.sleep(delay)
         if error is not None:
@@ -49,35 +51,82 @@ class TestInputGuard:
     async def test_label_mapping(
         self, label: str, category: GuardCategory, action: GuardAction
     ) -> None:
-        verdict = await _make_guard(label).classify("do astronauts fart in space?")
+        verdict, _ = await _make_guard(label).classify("do astronauts fart in space?")
         assert verdict.category is category
         assert verdict.action is action
 
     async def test_canned_verdicts_carry_response_ids(self) -> None:
-        distress = await _make_guard("distress").classify("I'm scared of the dark")
+        distress, _ = await _make_guard("distress").classify("I'm scared of the dark")
         assert distress.canned_response_id == canned.DISTRESS_DEFAULT
-        sensitive = await _make_guard("sensitive").classify("say a bad word")
+        sensitive, _ = await _make_guard("sensitive").classify("say a bad word")
         assert sensitive.canned_response_id == canned.SENSITIVE_DEFAULT
 
     async def test_empty_utterance_is_fine(self) -> None:
-        verdict = await _make_guard("distress").classify("   ")
+        verdict, _ = await _make_guard("distress").classify("   ")
         assert verdict.action is GuardAction.PASS_THROUGH
 
     @pytest.mark.parametrize("label", ["banana", "FINE AND ALSO", ""])
     async def test_unparseable_label_fails_closed(self, label: str) -> None:
-        assert await _make_guard(label).classify("hello") == FAIL_CLOSED_VERDICT
+        assert (await _make_guard(label).classify("hello"))[0] == FAIL_CLOSED_VERDICT
 
     async def test_api_error_fails_closed(self) -> None:
         guard = _make_guard(error=RuntimeError("api down"))
-        assert await guard.classify("hello") == FAIL_CLOSED_VERDICT
+        assert (await guard.classify("hello"))[0] == FAIL_CLOSED_VERDICT
 
     async def test_timeout_fails_closed(self) -> None:
         guard = _make_guard("fine", delay=5.0)  # timeout_s=0.2
-        assert await guard.classify("hello") == FAIL_CLOSED_VERDICT
+        assert (await guard.classify("hello"))[0] == FAIL_CLOSED_VERDICT
 
     def test_fail_closed_verdict_is_canned_sensitive(self) -> None:
         assert FAIL_CLOSED_VERDICT.category is GuardCategory.SENSITIVE
         assert FAIL_CLOSED_VERDICT.action is GuardAction.CANNED
+
+
+class TestGuardSpeculation:
+    """Guard/speech overlap: classification starts before the turn commits."""
+
+    async def test_matching_speculation_is_reused(self) -> None:
+        guard = _make_guard("fine")
+        guard.speculate("how big is the moon")
+        await asyncio.sleep(0)  # let the task run
+        verdict, hit = await guard.classify("how big is the moon")
+        assert hit is True
+        assert verdict.action is GuardAction.PASS_THROUGH
+        assert guard.test_calls == 1  # classify() awaited the speculation, no second call
+
+    async def test_whitespace_and_case_normalized(self) -> None:
+        guard = _make_guard("fine")
+        guard.speculate("How  big is the Moon")
+        _, hit = await guard.classify("how big is the moon")
+        assert hit is True
+
+    async def test_mismatched_final_text_classifies_fresh(self) -> None:
+        guard = _make_guard("fine")
+        guard.speculate("how big is")  # stale prefix
+        verdict, hit = await guard.classify("how big is the moon")
+        assert hit is False
+        assert verdict.action is GuardAction.PASS_THROUGH
+
+    async def test_stale_speculations_cleared_after_classify(self) -> None:
+        guard = _make_guard("fine")
+        guard.speculate("partial one")
+        guard.speculate("partial one two")
+        await guard.classify("something else entirely")
+        assert guard._speculations == {}
+
+    async def test_speculation_is_idempotent_per_text(self) -> None:
+        guard = _make_guard("fine")
+        guard.speculate("same text")
+        guard.speculate("same text")
+        await asyncio.sleep(0)
+        assert guard.test_calls == 1
+
+    async def test_fail_closed_survives_speculation(self) -> None:
+        guard = _make_guard(error=RuntimeError("api down"))
+        guard.speculate("hello there friend")
+        verdict, hit = await guard.classify("hello there friend")
+        assert hit is True
+        assert verdict == FAIL_CLOSED_VERDICT
 
 
 class TestOutputGuardRules:

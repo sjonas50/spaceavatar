@@ -70,7 +70,7 @@ class TestLivePersonaRun:
 
     @pytest.mark.parametrize("entry", load_script(), ids=lambda e: e["id"])
     async def test_input_guard_classification(self, guard: Any, entry: dict[str, Any]) -> None:
-        verdict = await guard.classify(entry["question"])
+        verdict, _ = await guard.classify(entry["question"])
         expected = GuardCategory(entry["expected_guard"])
         if expected in (GuardCategory.SENSITIVE, GuardCategory.DISTRESS):
             # Guarded categories must never be under-classified as fine.

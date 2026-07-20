@@ -34,6 +34,29 @@ _DEFLECT_INSTRUCTION = (
 )
 
 
+def enable_guard_speculation(session: Any, agent: "CommanderSkyAgent") -> None:
+    """Overlap guard classification with the user's speech.
+
+    On every final transcript chunk we speculatively classify the
+    accumulated utterance; by end-of-turn the verdict is usually ready and
+    on_user_turn_completed's await is near-instant. Safety is unchanged —
+    the persona LLM still waits for the verdict.
+    """
+    buffer: list[str] = []
+
+    def _on_transcribed(ev: Any) -> None:
+        if getattr(ev, "is_final", False) and ev.transcript.strip():
+            buffer.append(ev.transcript)
+            agent._input_guard.speculate(" ".join(buffer))
+
+    def _on_item_added(ev: Any) -> None:
+        if getattr(getattr(ev, "item", None), "role", None) == "user":
+            buffer.clear()
+
+    session.on("user_input_transcribed", _on_transcribed)
+    session.on("conversation_item_added", _on_item_added)
+
+
 class CommanderSkyAgent(Agent):
     """Agent with the input guard before the LLM and the output guard before TTS."""
 
@@ -48,10 +71,15 @@ class CommanderSkyAgent(Agent):
         """Classify the utterance before it can reach the persona LLM."""
         text = new_message.text_content or ""
         started = time.perf_counter()
-        verdict = await self._input_guard.classify(text)
+        verdict, speculative_hit = await self._input_guard.classify(text)
         guard_ms = round((time.perf_counter() - started) * 1000, 1)
         # tags + timing only, never text — this is serial time on the reply path
-        log.info("input_guard_verdict", category=verdict.category.value, guard_ms=guard_ms)
+        log.info(
+            "input_guard_verdict",
+            category=verdict.category.value,
+            guard_ms=guard_ms,
+            speculative_hit=speculative_hit,
+        )
 
         if verdict.action is GuardAction.CANNED:
             assert verdict.canned_response_id is not None  # enforced by GuardVerdict

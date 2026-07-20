@@ -22,7 +22,7 @@ from commander_sky.logging import configure_logging, get_logger
 from commander_sky.metrics import log_pipeline_metrics
 from commander_sky.persona import build_system_prompt
 from commander_sky.safety import InputGuard, OutputGuard
-from commander_sky.sky_agent import CommanderSkyAgent
+from commander_sky.sky_agent import CommanderSkyAgent, enable_guard_speculation
 
 log = get_logger("worker")
 
@@ -174,8 +174,10 @@ async def entrypoint(ctx: JobContext) -> None:
         await avatar.start(session, room=ctx.room)
         await avatar.wait_for_join()
 
+    agent = build_agent(settings)
+    enable_guard_speculation(session, agent)
     await session.start(
-        agent=build_agent(settings),
+        agent=agent,
         room=ctx.room,
         room_output_options=RoomOutputOptions(audio_enabled=room_audio_enabled(settings)),
     )
