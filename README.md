@@ -88,13 +88,17 @@ RUN_PERSONA_SCRIPT=1 uv run pytest tests/test_persona_script.py
 ## Repo layout
 
 ```
-agent/          Python LiveKit agent worker (src layout, uv)
+agent/          Python LiveKit agent worker (src layout, uv) + Dockerfile + fly.toml
 web/            Next.js frontend (token API, session UI, parent gate)
-infra/          fly.toml deploy config
-docs/           research, architecture (+ADRs), build plan, compliance checklist
+docs/           research, architecture (+ADRs), build plan, deploy runbook, compliance
 BUILD_PLAN.md   original product plan
 CLAUDE.md       working notes: commands, decisions, pitfalls
 ```
+
+## Deploying
+
+Web app on Vercel, agent worker on Fly.io — full runbook with the cost
+guardrails in [docs/deploy.md](docs/deploy.md).
 
 ## Costs
 

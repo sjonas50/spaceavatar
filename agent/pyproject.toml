@@ -10,6 +10,8 @@ dependencies = [
     "pydantic-settings>=2.3",
     "structlog>=24.1",
     "python-dotenv>=1.0",
+    # transitive via livekit-agents; floor pinned past GHSA-xf7x-x43h-rpqh
+    "json-repair>=0.60.1",
 ]
 
 [dependency-groups]

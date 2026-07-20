@@ -22,13 +22,24 @@ type ConnectionDetails = {
 export function SessionExperience() {
   const [details, setDetails] = useState<ConnectionDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [needsCode, setNeedsCode] = useState(false);
+  const [accessCode, setAccessCode] = useState("");
   const startedRef = useRef(false);
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (code?: string) => {
     setError(null);
     try {
-      const res = await fetch("/api/token", { method: "POST" });
+      const res = await fetch("/api/token", {
+        method: "POST",
+        headers: code ? { "x-access-code": code } : {},
+      });
+      if (res.status === 401) {
+        setNeedsCode(true);
+        if (code) setError("That's not the right mission code — try again.");
+        return;
+      }
       if (!res.ok) throw new Error(`token request failed: ${res.status}`);
+      setNeedsCode(false);
       setDetails(await res.json());
     } catch {
       setError("Couldn't reach mission control. Try again in a moment!");
@@ -48,13 +59,39 @@ export function SessionExperience() {
       <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-slate-950 text-white">
         <div className="animate-[float_3s_ease-in-out_infinite] text-8xl">🧑‍🚀</div>
         <h1 className="text-4xl font-bold">Commander Sky</h1>
-        {error ? (
+        {needsCode ? (
+          <div className="flex flex-col items-center gap-3">
+            <p className="text-slate-300">Enter your mission code to board.</p>
+            <div className="flex gap-2">
+              <input
+                data-testid="access-code"
+                value={accessCode}
+                onChange={(e) => setAccessCode(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && start(accessCode)}
+                className="rounded-xl bg-slate-800 px-4 py-3 text-center text-xl"
+                aria-label="Mission code"
+              />
+              <button
+                data-testid="access-code-submit"
+                onClick={() => start(accessCode)}
+                className="rounded-xl bg-emerald-500 px-6 py-3 font-bold"
+              >
+                Board
+              </button>
+            </div>
+            {error && (
+              <p className="text-amber-300" data-testid="session-error">
+                {error}
+              </p>
+            )}
+          </div>
+        ) : error ? (
           <>
             <p className="text-amber-300" data-testid="session-error">
               {error}
             </p>
             <button
-              onClick={start}
+              onClick={() => start(accessCode || undefined)}
               data-testid="retry-session"
               className="rounded-full bg-emerald-500 px-10 py-5 text-2xl font-bold shadow-xl transition-transform active:scale-95"
             >
