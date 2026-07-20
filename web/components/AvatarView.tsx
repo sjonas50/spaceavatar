@@ -1,7 +1,6 @@
 "use client";
 
 import { VideoTrack, useVoiceAssistant } from "@livekit/components-react";
-import { ThinkingCue } from "@/components/ThinkingCue";
 
 /**
  * Fullscreen avatar area.
@@ -23,9 +22,6 @@ export function AvatarView() {
       ) : (
         <FrontendCharacter speaking={state === "speaking"} connected={state !== "connecting"} />
       )}
-      <div className="absolute bottom-4 h-12">
-        {state === "thinking" && <ThinkingCue />}
-      </div>
     </div>
   );
 }

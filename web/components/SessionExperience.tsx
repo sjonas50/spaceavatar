@@ -3,6 +3,7 @@
 import { LiveKitRoom, RoomAudioRenderer, useLocalParticipant } from "@livekit/components-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AvatarView } from "@/components/AvatarView";
+import { Captions } from "@/components/Captions";
 import { PushToTalkButton } from "@/components/PushToTalkButton";
 import { SpaceOverlay } from "@/components/SpaceOverlay";
 import { buildConnectOptions } from "@/lib/livekit";
@@ -83,6 +84,7 @@ export function SessionExperience() {
     >
       <SpaceOverlay />
       <AvatarView />
+      <Captions />
       <div className="pb-4">{MIC_MODE === "open" ? <MicControl /> : <PushToTalkButton />}</div>
       <RoomAudioRenderer />
     </LiveKitRoom>
