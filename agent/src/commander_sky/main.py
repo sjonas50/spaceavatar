@@ -17,6 +17,7 @@ from commander_sky import skytools
 from commander_sky.avatar import create_avatar, room_audio_enabled
 from commander_sky.canned import SIGN_OFF, get_canned
 from commander_sky.config import Settings, load_settings
+from commander_sky.costs import SessionCostTracker
 from commander_sky.facts import load_facts
 from commander_sky.logging import configure_logging, get_logger
 from commander_sky.metrics import log_pipeline_metrics
@@ -153,6 +154,24 @@ async def _end_session_after_limit(session: AgentSession, minutes: int) -> None:
     await session.aclose()
 
 
+async def _cost_cap_loop(
+    session: AgentSession, tracker: SessionCostTracker, settings: Settings
+) -> None:
+    """Log a cost snapshot every 30s and hard-stop at MAX_SESSION_COST_USD."""
+    while True:
+        await asyncio.sleep(30)
+        tracker.log_snapshot()
+        if tracker.total() >= settings.max_session_cost_usd:
+            log.warning(
+                "session_cost_cap_reached",
+                total_usd=tracker.total(),
+                cap_usd=settings.max_session_cost_usd,
+            )
+            await session.say(get_canned(SIGN_OFF), allow_interruptions=False)
+            await session.aclose()
+            return
+
+
 async def entrypoint(ctx: JobContext) -> None:
     """Job entrypoint: one room == one conversation with one child."""
     configure_logging()
@@ -176,6 +195,10 @@ async def entrypoint(ctx: JobContext) -> None:
 
     agent = build_agent(settings)
     enable_guard_speculation(session, agent)
+
+    tracker = SessionCostTracker(settings, guard=agent._input_guard)
+    session.on("metrics_collected", tracker.on_metrics)
+
     await session.start(
         agent=agent,
         room=ctx.room,
@@ -187,8 +210,15 @@ async def entrypoint(ctx: JobContext) -> None:
         _end_session_after_limit(session, settings.max_session_minutes)
     )
     nudge_task = asyncio.create_task(_idle_nudge_loop(session, settings))
+    cost_task = asyncio.create_task(_cost_cap_loop(session, tracker, settings))
     ctx.add_shutdown_callback(lambda: _cancel(limit_task))
     ctx.add_shutdown_callback(lambda: _cancel(nudge_task))
+    ctx.add_shutdown_callback(lambda: _cancel(cost_task))
+
+    async def _final_cost() -> None:
+        tracker.log_snapshot(event="session_cost_final")
+
+    ctx.add_shutdown_callback(_final_cost)
 
     await session.generate_reply(
         instructions="Greet the visitor warmly in one short sentence, in character, "

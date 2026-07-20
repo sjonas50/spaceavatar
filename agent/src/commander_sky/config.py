@@ -79,6 +79,17 @@ class Settings(BaseSettings):
     idle_nudge_s: float = Field(default=30.0, ge=0.0)
     idle_nudge_max: int = Field(default=2, ge=0)
 
+    # Cost rates (USD) for the per-session estimate — keep in sync with vendor
+    # pricing; env-overridable so price changes don't need a code change.
+    cost_llm_in_per_mtok: float = Field(default=3.0, ge=0)
+    cost_llm_cached_in_per_mtok: float = Field(default=0.30, ge=0)
+    cost_llm_out_per_mtok: float = Field(default=15.0, ge=0)
+    cost_guard_per_call: float = Field(default=0.0007, ge=0)
+    cost_tts_per_1k_chars: float = Field(default=0.03, ge=0)
+    cost_stt_per_min: float = Field(default=0.0077, ge=0)
+    cost_avatar_per_min: float = Field(default=0.10, ge=0)
+    cost_livekit_per_min: float = Field(default=0.01, ge=0)
+
 
 def load_settings() -> Settings:
     """Load settings from the environment, failing fast on missing required keys."""

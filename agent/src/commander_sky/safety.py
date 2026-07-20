@@ -75,6 +75,7 @@ class InputGuard:
         self._model = model
         self._timeout_s = timeout_s
         self._speculations: dict[str, asyncio.Task[GuardVerdict]] = {}
+        self.calls_made = 0  # for cost tracking (speculative calls included)
 
     @staticmethod
     def _key(text: str) -> str:
@@ -114,6 +115,7 @@ class InputGuard:
         """Classify immediately. Any failure returns the fail-closed verdict."""
         if not text.strip():
             return _CATEGORY_TO_VERDICT[GuardCategory.FINE]
+        self.calls_made += 1
         try:
             response = await asyncio.wait_for(
                 self._client.messages.create(

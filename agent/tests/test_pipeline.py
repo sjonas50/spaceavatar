@@ -12,7 +12,8 @@ from commander_sky.config import AvatarMode, Settings
 from commander_sky.main import SPACE_KEYTERMS, build_session
 
 
-def test_build_session_constructs_offline(settings: Settings) -> None:
+async def test_build_session_constructs_offline(settings: Settings) -> None:
+    # async: AgentSession's constructor requires an event loop to exist
     session = build_session(settings)
     assert session is not None
 
@@ -63,7 +64,8 @@ class TestAvatarAdapter:
             assert None not in kwargs.values()
 
 
-def test_dry_run_exits_zero(fake_env: dict[str, str]) -> None:
+async def test_dry_run_exits_zero(fake_env: dict[str, str]) -> None:
+    # async: dry_run builds an AgentSession, which needs an event loop
     from commander_sky.main import dry_run
 
     assert dry_run() == 0
