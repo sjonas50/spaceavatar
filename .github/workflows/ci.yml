@@ -38,6 +38,9 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: web/package-lock.json
+      # match the npm major that generated the lockfile (npm 10 resolves the
+      # sharp/wasm optional-dependency chain differently and rejects the lock)
+      - run: npm install -g npm@11
       - run: npm ci
       - run: npm run lint
       - run: npm run build
