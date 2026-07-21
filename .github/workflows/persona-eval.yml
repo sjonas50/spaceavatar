@@ -1,0 +1,44 @@
+# Live persona evaluation: runs the 34-question acceptance script against the
+# real input guard (Claude Haiku). Costs a few cents per run — scheduled weekly
+# and runnable on demand, NOT on every push.
+#
+# Requires the ANTHROPIC_API_KEY repository secret:
+#   GitHub repo -> Settings -> Secrets and variables -> Actions -> New secret
+
+name: Persona Eval
+
+on:
+  schedule:
+    - cron: "0 14 * * 1" # Mondays 14:00 UTC
+  workflow_dispatch:
+
+jobs:
+  persona:
+    name: Live persona script (guard classification)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: agent/uv.lock
+      - run: uv sync --frozen
+      - name: Run live persona script
+        env:
+          RUN_PERSONA_SCRIPT: "1"
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Fakes for settings fields the guard tests don't touch:
+          LIVEKIT_URL: wss://ci.invalid
+          LIVEKIT_API_KEY: ci
+          LIVEKIT_API_SECRET: ci
+          DEEPGRAM_API_KEY: ci
+          CARTESIA_API_KEY: ci
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::warning::ANTHROPIC_API_KEY secret not configured — skipping live eval"
+            exit 0
+          fi
+          uv run pytest tests/test_persona_script.py -v
