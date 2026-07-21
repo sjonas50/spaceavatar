@@ -24,7 +24,9 @@ primary_region = "sjc" # matches LiveKit "US West B"; verify with your project
 # Workers hold live WebRTC sessions: never autostop mid-conversation,
 # keep at least one warm worker (avoids LiveKit Build-plan cold starts).
 [[vm]]
-  size = "performance-1x"
+  # shared-cpu keeps this on Fly's hobby tier; move to performance-1x for
+  # higher concurrency once the org plan allows it.
+  size = "shared-cpu-2x"
   memory = "2gb"
 
 [http_service]
