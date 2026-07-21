@@ -38,10 +38,11 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: web/package-lock.json
-      # match the npm major that generated the lockfile (npm 10 resolves the
-      # sharp/wasm optional-dependency chain differently and rejects the lock)
-      - run: npm install -g npm@11
-      - run: npm ci
+      # npm install, not npm ci: the sharp/wasm optional-dependency chain
+      # resolves differently per-OS, and a mac-generated lockfile fails npm
+      # ci's strict check on linux (long-standing npm issue). install still
+      # honors the lockfile for everything resolvable.
+      - run: npm install --no-audit --no-fund
       - run: npm run lint
       - run: npm run build
       - run: npx playwright install --with-deps chromium
