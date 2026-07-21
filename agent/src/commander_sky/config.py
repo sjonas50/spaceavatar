@@ -78,6 +78,9 @@ class Settings(BaseSettings):
     # fun fact or the quiz, at most idle_nudge_max times in a row. 0 disables.
     idle_nudge_s: float = Field(default=30.0, ge=0.0)
     idle_nudge_max: int = Field(default=2, ge=0)
+    # Cost control: end the session after this many quiet seconds (an open tab
+    # otherwise streams avatar + STT until the session cap). 0 disables.
+    idle_shutdown_s: float = Field(default=180.0, ge=0.0)
 
     # Cost rates (USD) for the per-session estimate — keep in sync with vendor
     # pricing; env-overridable so price changes don't need a code change.

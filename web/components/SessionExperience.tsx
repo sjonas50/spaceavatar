@@ -24,6 +24,7 @@ export function SessionExperience() {
   const [error, setError] = useState<string | null>(null);
   const [needsCode, setNeedsCode] = useState(false);
   const [accessCode, setAccessCode] = useState("");
+  const [ended, setEnded] = useState(false);
   const startedRef = useRef(false);
 
   const start = useCallback(async (code?: string) => {
@@ -40,6 +41,7 @@ export function SessionExperience() {
       }
       if (!res.ok) throw new Error(`token request failed: ${res.status}`);
       setNeedsCode(false);
+      setEnded(false);
       setDetails(await res.json());
     } catch {
       setError("Couldn't reach mission control. Try again in a moment!");
@@ -85,6 +87,17 @@ export function SessionExperience() {
               </p>
             )}
           </div>
+        ) : ended ? (
+          <div className="flex flex-col items-center gap-3">
+            <p className="text-slate-300">Mission complete — Commander Sky is off duty.</p>
+            <button
+              onClick={() => start(accessCode || undefined)}
+              data-testid="restart-session"
+              className="rounded-full bg-emerald-500 px-10 py-5 text-2xl font-bold shadow-xl transition-transform active:scale-95"
+            >
+              Talk to her again
+            </button>
+          </div>
         ) : error ? (
           <>
             <p className="text-amber-300" data-testid="session-error">
@@ -114,7 +127,10 @@ export function SessionExperience() {
       video={false} // we never use the child's camera
       connectOptions={buildConnectOptions()}
       onDisconnected={() => {
+        // Session ended (sign-off, cap, idle, or network) — show the restart
+        // screen instead of auto-reconnecting; nothing bills while it waits.
         startedRef.current = false;
+        setEnded(true);
         setDetails(null);
       }}
       className="relative flex min-h-screen flex-col items-center justify-between bg-slate-950 py-8 text-white"

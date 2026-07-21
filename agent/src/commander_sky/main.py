@@ -111,32 +111,44 @@ def build_session(settings: Settings) -> AgentSession:
 
 
 async def _idle_nudge_loop(session: AgentSession, settings: Settings) -> None:
-    """Proactive engagement: after a quiet spell, offer a fun fact or the quiz.
+    """Proactive engagement + idle cost control.
 
-    Nudges stop after ``idle_nudge_max`` in a row so a walked-away visitor gets
-    silence, not a monologue; any user speech re-arms the counter.
+    After a quiet spell, offer a fun fact or the quiz (at most idle_nudge_max
+    in a row — a walked-away visitor gets silence, not a monologue). If the
+    quiet continues past idle_shutdown_s, sign off and end the session: an
+    abandoned open tab otherwise streams avatar video and STT audio for money
+    until the session cap.
     """
-    if settings.idle_nudge_s <= 0:
+    if settings.idle_nudge_s <= 0 and settings.idle_shutdown_s <= 0:
         return
-    state = {"last_activity": asyncio.get_running_loop().time(), "nudges_in_a_row": 0}
+    state = {"last_user_speech": asyncio.get_running_loop().time(), "nudges_in_a_row": 0}
 
     def _on_item(ev: object) -> None:
-        state["last_activity"] = asyncio.get_running_loop().time()
         if getattr(getattr(ev, "item", None), "role", None) == "user":
+            state["last_user_speech"] = asyncio.get_running_loop().time()
             state["nudges_in_a_row"] = 0
 
     session.on("conversation_item_added", _on_item)
 
     while True:
         await asyncio.sleep(5)
-        quiet_for = asyncio.get_running_loop().time() - state["last_activity"]
+        quiet_for = asyncio.get_running_loop().time() - state["last_user_speech"]
+
+        if 0 < settings.idle_shutdown_s <= quiet_for:
+            log.info("idle_shutdown", quiet_s=round(quiet_for))
+            await session.say(get_canned(SIGN_OFF), allow_interruptions=False)
+            await session.aclose()
+            return
+
+        nudge_due = settings.idle_nudge_s > 0 and quiet_for >= settings.idle_nudge_s * (
+            state["nudges_in_a_row"] + 1
+        )
         if (
-            quiet_for >= settings.idle_nudge_s
+            nudge_due
             and state["nudges_in_a_row"] < settings.idle_nudge_max
             and session.agent_state == "listening"
         ):
             state["nudges_in_a_row"] += 1
-            state["last_activity"] = asyncio.get_running_loop().time()
             log.info("idle_nudge", count=state["nudges_in_a_row"])
             session.generate_reply(
                 instructions="The visitor has been quiet for a while. In one or two "
@@ -144,6 +156,28 @@ async def _idle_nudge_loop(session: AgentSession, settings: Settings) -> None:
                 "or a quick space quiz — then invite a response. Do not mention the "
                 "silence."
             )
+
+
+def _watch_visitor_departure(ctx: JobContext, session: AgentSession) -> None:
+    """End the session the moment no human participants remain in the room.
+
+    The agent and the avatar are also participants — without this, closing the
+    tab leaves them chatting to an empty room on the clock.
+    """
+
+    close_task: list[asyncio.Task] = []  # keep a reference so the task isn't GC'd
+
+    def _human_count() -> int:
+        return sum(
+            1 for p in ctx.room.remote_participants.values() if "avatar" not in (p.identity or "")
+        )
+
+    def _on_disconnect(_participant: object) -> None:
+        if _human_count() == 0 and not close_task:
+            log.info("visitor_left_ending_session")
+            close_task.append(asyncio.create_task(session.aclose()))
+
+    ctx.room.on("participant_disconnected", _on_disconnect)
 
 
 async def _end_session_after_limit(session: AgentSession, minutes: int) -> None:
@@ -205,6 +239,7 @@ async def entrypoint(ctx: JobContext) -> None:
         room_output_options=RoomOutputOptions(audio_enabled=room_audio_enabled(settings)),
     )
     log.info("session_started", avatar_mode=settings.avatar_mode.value)
+    _watch_visitor_departure(ctx, session)
 
     limit_task = asyncio.create_task(
         _end_session_after_limit(session, settings.max_session_minutes)
