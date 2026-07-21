@@ -129,5 +129,10 @@ def test_agent_exposes_interactive_tools() -> None:
     )
     tool_names = {getattr(t, "name", getattr(t, "__name__", "")) for t in agent.tools}
     joined = " ".join(str(n) for n in tool_names) + " " + str(agent.tools)
-    for expected in ("show_picture", "get_space_station_location", "get_next_rocket_launch"):
+    for expected in (
+        "show_picture",
+        "get_space_station_location",
+        "get_next_rocket_launch",
+        "lookup_mission_archive",
+    ):
         assert expected in joined

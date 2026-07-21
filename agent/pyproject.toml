@@ -12,6 +12,7 @@ dependencies = [
     "python-dotenv>=1.0",
     # transitive via livekit-agents; floor pinned past GHSA-xf7x-x43h-rpqh
     "json-repair>=0.60.1",
+    "rank-bm25>=0.2.2",
 ]
 
 [dependency-groups]

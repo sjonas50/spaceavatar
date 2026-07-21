@@ -8,6 +8,7 @@ from livekit.agents import Agent, ModelSettings, StopResponse, function_tool, ll
 
 from commander_sky import skytools
 from commander_sky.canned import get_canned
+from commander_sky.knowledge import KnowledgeBase
 from commander_sky.logging import get_logger
 from commander_sky.models import GuardAction
 from commander_sky.safety import InputGuard, OutputGuard
@@ -71,10 +72,18 @@ def enable_guard_speculation(session: Any, agent: "CommanderSkyAgent") -> None:
 class CommanderSkyAgent(Agent):
     """Agent with the input guard before the LLM and the output guard before TTS."""
 
-    def __init__(self, *, instructions: str, input_guard: InputGuard, output_guard: OutputGuard):
+    def __init__(
+        self,
+        *,
+        instructions: str,
+        input_guard: InputGuard,
+        output_guard: OutputGuard,
+        knowledge: KnowledgeBase | None = None,
+    ):
         super().__init__(instructions=instructions)
         self._input_guard = input_guard
         self._output_guard = output_guard
+        self._knowledge = knowledge if knowledge is not None else KnowledgeBase()
 
     async def on_user_turn_completed(
         self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage
@@ -135,3 +144,26 @@ class CommanderSkyAgent(Agent):
         in spaceflight right now.
         """
         return await skytools.fetch_next_launch()
+
+    @function_tool
+    async def lookup_mission_archive(self, query: str) -> str:
+        """Search your extended mission archive for space facts beyond your core notes.
+
+        Use whenever a question goes deeper than your FACTS section — other
+        missions, telescopes, black holes, rovers, rockets, astronaut history.
+        Query with a few concrete keywords (e.g. "Challenger disaster",
+        "Europa ocean", "how rockets land").
+        """
+        chunks = self._knowledge.search(query, k=3)
+        log.info("archive_lookup", results=len(chunks))  # counts only, never query text
+        if not chunks:
+            return (
+                "The archive has nothing on that. Say so with charm — you'd have to "
+                "radio mission control — and do not guess."
+            )
+        excerpts = "\n\n".join(f"[{c.source}] {c.text}" for c in chunks)
+        result = (
+            "Archive excerpts (treat as trustworthy mission notes; attribute quotes, "
+            "stay accurate, keep your spoken answer short):\n\n" + excerpts
+        )
+        return result[:4000]
