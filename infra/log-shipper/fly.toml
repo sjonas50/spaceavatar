@@ -1,0 +1,20 @@
+# Fly log drain: ships all app logs in the org to Tigris object storage
+# (S3-compatible, billed through Fly — no external account).
+#
+# Secrets (set once, values never in this file):
+#   ORG, ACCESS_TOKEN            — org slug + `fly tokens create readonly`
+#   AWS_ACCESS_KEY_ID/SECRET     — Tigris bucket credentials
+#   AWS_BUCKET, AWS_REGION       — bucket name, "auto"
+#   S3_ENDPOINT                  — https://fly.storage.tigris.dev
+#
+# Logs land as JSON batches under s3://<bucket>/commander-sky-agent/...
+
+app = "commander-sky-log-shipper"
+primary_region = "sjc"
+
+[build]
+  image = "flyio/log-shipper:latest"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

@@ -128,6 +128,17 @@ class CommanderSkyAgent(Agent):
         return await skytools.show_image(image_id)
 
     @function_tool
+    async def show_nasa_image(self, query: str) -> str:
+        """Search NASA's image archive and show a picture for topics NOT in your gallery.
+
+        Use for any space subject show_picture can't cover — Uranus, nebulae,
+        specific missions, telescopes, rovers. Query with 2-4 concrete words
+        (e.g. "Uranus Voyager", "Crab Nebula Hubble", "Perseverance rover").
+        Prefer show_picture when the topic is in its gallery.
+        """
+        return await skytools.search_nasa_image(query)
+
+    @function_tool
     async def get_space_station_location(self) -> str:
         """Get the International Space Station's live position right now.
 

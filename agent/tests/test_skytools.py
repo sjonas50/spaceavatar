@@ -76,9 +76,46 @@ class _FakeHttp:
         self._payload = payload
         self.calls = 0
 
-    def get(self, url: str) -> _FakeResponse:
+    def get(self, url: str, params: dict | None = None) -> _FakeResponse:
         self.calls += 1
         return _FakeResponse(self._payload)
+
+
+class TestNasaImageSearch:
+    def _payload(self) -> dict:
+        return {
+            "collection": {
+                "items": [
+                    {"data": [{"nasa_id": "concert-astronaut", "title": "Orchestra performance"}]},
+                    {"data": [{"nasa_id": "PIA18182", "title": "Uranus as seen by Voyager 2"}]},
+                ]
+            }
+        }
+
+    async def test_prefers_title_matching_query(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        sent: list[dict] = []
+
+        async def fake_publish(payload: dict) -> bool:
+            sent.append(payload)
+            return True
+
+        monkeypatch.setattr(skytools, "publish_ui", fake_publish)
+        result = await skytools.search_nasa_image("uranus voyager", _FakeHttp(self._payload()))  # type: ignore[arg-type]
+        assert sent and sent[0]["id"] == "nasa:PIA18182"
+        assert sent[0]["src"].startswith("https://images-assets.nasa.gov/image/")
+        assert "Uranus" in result
+
+    async def test_no_results_degrades(self) -> None:
+        result = await skytools.search_nasa_image("x", _FakeHttp({"collection": {"items": []}}))  # type: ignore[arg-type]
+        assert "Continue without" in result
+
+    async def test_api_failure_degrades(self) -> None:
+        class _Boom:
+            def get(self, url: str, params: dict | None = None):
+                raise OSError("down")
+
+        result = await skytools.search_nasa_image("uranus", _Boom())  # type: ignore[arg-type]
+        assert "Continue without" in result
 
 
 class TestLiveData:

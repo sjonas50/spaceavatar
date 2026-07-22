@@ -1,6 +1,7 @@
 "use client";
 
-import { useDataChannel } from "@livekit/components-react";
+import { useDataChannel, useLocalParticipant } from "@livekit/components-react";
+import { ParticipantEvent } from "livekit-client";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -8,13 +9,19 @@ type ShowImage = { type: "show_image"; id: string; src: string; caption: string 
 
 const DISMISS_MS = 25_000;
 
+const ALLOWED_SRC = (src: string) =>
+  src.startsWith("/space/") || src.startsWith("https://images-assets.nasa.gov/image/");
+
 /**
  * Renders pictures the agent pushes over the "ui" data channel while talking.
- * Only local /space/ gallery paths are rendered — anything else is ignored.
+ * Sources are allowlisted: the local gallery and NASA's public archive only.
+ * Dismisses on tap, after a timer, or as soon as the visitor starts speaking
+ * (a stale picture shouldn't hang over a new question).
  */
 export function SpaceOverlay() {
   const [image, setImage] = useState<ShowImage | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { localParticipant } = useLocalParticipant();
 
   const onMessage = useCallback((msg: { payload: Uint8Array }) => {
     let parsed: ShowImage;
@@ -23,13 +30,25 @@ export function SpaceOverlay() {
     } catch {
       return;
     }
-    if (parsed.type !== "show_image" || !parsed.src?.startsWith("/space/")) return;
+    if (parsed.type !== "show_image" || !ALLOWED_SRC(parsed.src ?? "")) return;
     setImage(parsed);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => setImage(null), DISMISS_MS);
   }, []);
 
   useDataChannel("ui", onMessage);
+
+  // Visitor started talking (new question or barge-in) — clear the old picture.
+  useEffect(() => {
+    if (!localParticipant) return;
+    const onSpeaking = (speaking: boolean) => {
+      if (speaking) setImage(null);
+    };
+    localParticipant.on(ParticipantEvent.IsSpeakingChanged, onSpeaking);
+    return () => {
+      localParticipant.off(ParticipantEvent.IsSpeakingChanged, onSpeaking);
+    };
+  }, [localParticipant]);
 
   useEffect(
     () => () => {

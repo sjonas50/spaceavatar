@@ -39,6 +39,9 @@ GALLERY: dict[str, dict[str, str]] = {
     "milky_way": {"src": "/space/milky_way.jpg", "caption": "The Milky Way"},
 }
 
+NASA_IMAGES_API = "https://images-api.nasa.gov/search"
+NASA_ASSETS_HOST = "https://images-assets.nasa.gov"
+
 ISS_API = "https://api.wheretheiss.at/v1/satellites/25544"
 LAUNCH_API = "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=1"
 _LAUNCH_CACHE_TTL_S = 30 * 60  # Launch Library rate-limits unauthenticated calls
@@ -75,6 +78,55 @@ async def show_image(image_id: str) -> str:
         f"On screen now: {entry['caption']}. Keep answering the visitor's actual "
         "question — the picture just illustrates it."
     )
+
+
+async def search_nasa_image(query: str, http: aiohttp.ClientSession | None = None) -> str:
+    """Search NASA's public image library and push the best hit to the screen.
+
+    Only images-assets.nasa.gov URLs are ever published (the client enforces
+    the same allowlist). Prefers results whose title matches the query terms —
+    NASA search's first hit is unreliable (concert photos of costumed
+    astronauts are real search results).
+    """
+    owned = http is None
+    session = http or aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=6))
+    try:
+        params = {"media_type": "image", "q": query}
+        async with session.get(NASA_IMAGES_API, params=params) as resp:
+            data = await resp.json()
+        items = data.get("collection", {}).get("items", [])[:8]
+        if not items:
+            return "No archive imagery found for that. Continue without a picture."
+
+        terms = set(query.lower().split())
+
+        def score(item: dict) -> int:
+            title = (item.get("data") or [{}])[0].get("title", "").lower()
+            return sum(1 for t in terms if t in title)
+
+        best = max(items, key=score)
+        meta = (best.get("data") or [{}])[0]
+        nasa_id = meta.get("nasa_id", "")
+        title = meta.get("title", "From the NASA archive")[:120]
+        if not nasa_id:
+            return "No archive imagery found for that. Continue without a picture."
+
+        src = f"{NASA_ASSETS_HOST}/image/{nasa_id}/{nasa_id}~medium.jpg"
+        sent = await publish_ui(
+            {"type": "show_image", "id": f"nasa:{nasa_id}", "src": src, "caption": title}
+        )
+        if not sent:
+            return "The screen isn't available right now. Continue without the picture."
+        return (
+            f"On screen now: {title}. Keep answering the visitor's actual question — "
+            "the picture just illustrates it."
+        )
+    except Exception as exc:
+        log.warning("nasa_search_failed", reason=type(exc).__name__)
+        return "The image archive isn't reachable right now. Continue without a picture."
+    finally:
+        if owned:
+            await session.close()
 
 
 async def fetch_iss_position(http: aiohttp.ClientSession | None = None) -> str:
