@@ -13,7 +13,16 @@ export function Captions() {
   const agentSegments = transcriptions.filter(
     (t) => t.participantInfo.identity !== localParticipant?.identity,
   );
-  const latest = agentSegments[agentSegments.length - 1];
+  // Newest stream wins (by stream timestamp, not array order): interruptions
+  // and discarded preemptive generations can leave stale streams interleaved,
+  // which otherwise desyncs captions from what she's actually saying.
+  const latest = agentSegments.reduce<(typeof agentSegments)[number] | undefined>(
+    (best, seg) =>
+      !best || (seg.streamInfo?.timestamp ?? 0) >= (best.streamInfo?.timestamp ?? 0)
+        ? seg
+        : best,
+    undefined,
+  );
 
   // Show only the sentence currently being spoken, not the whole reply.
   const sentences = (latest?.text ?? "").split(/(?<=[.!?…])\s+/).filter(Boolean);

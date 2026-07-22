@@ -29,9 +29,9 @@ GalleryImage = Literal[
 log = get_logger("sky_agent")
 
 _DEFLECT_INSTRUCTION = (
-    "[safety guard] The user said something off-topic (not about space). Do not answer "
-    "it directly. Redirect with charm: acknowledge briefly, then offer a space fact or "
-    "question, per your rules."
+    "[guard note: the message above was flagged as possibly off-topic. If it is not "
+    "about space, redirect with charm per your rules — acknowledge briefly, then offer "
+    "a space hook. If it actually IS about space or spaceflight, simply answer it.]"
 )
 
 
@@ -107,9 +107,10 @@ class CommanderSkyAgent(Agent):
             raise StopResponse()  # the freeform LLM never sees this turn
 
         if verdict.action is GuardAction.DEFLECT:
-            # Replace the raw utterance with a bounded instruction; the child's
-            # exact words don't need to reach the LLM for a redirect.
-            new_message.content = [_DEFLECT_INSTRUCTION]
+            # Non-destructive: keep the user's words and append steering. A
+            # misclassified on-topic question (it happens: "satellites" was
+            # once ruled off-topic) still gets answered instead of erased.
+            new_message.content = [f"{text}\n\n{_DEFLECT_INSTRUCTION}"]
 
     async def tts_node(self, text: AsyncIterable[str], model_settings: ModelSettings) -> Any:
         """Every generated sentence passes the output guard before synthesis."""

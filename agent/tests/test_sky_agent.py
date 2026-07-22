@@ -44,10 +44,14 @@ class TestOnUserTurnCompleted:
         assert verdicts and isinstance(verdicts[0]["guard_ms"], float)
         assert secret not in str(captured)
 
-    async def test_off_topic_rewrites_to_deflection(self) -> None:
+    async def test_off_topic_keeps_question_and_appends_steering(self) -> None:
+        """Deflection must be non-destructive — misclassified space questions
+        (e.g. 'satellites') should still be answerable by the LLM."""
         message = _message("what's your favorite video game?")
         await _agent(_make_guard("off_topic")).on_user_turn_completed(None, message)  # type: ignore[arg-type]
-        assert message.content == [_DEFLECT_INSTRUCTION]
+        text = message.content[0]
+        assert "what's your favorite video game?" in text
+        assert _DEFLECT_INSTRUCTION in text
 
     @pytest.mark.parametrize(
         ("label", "expected_id"),
