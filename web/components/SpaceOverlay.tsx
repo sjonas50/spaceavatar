@@ -71,6 +71,7 @@ export function SpaceOverlay() {
         height={480}
         className="h-auto w-full object-cover"
         priority
+        onError={() => setImage(null)} // broken asset: vanish, don't show a dead frame
       />
       <div className="px-4 py-3 text-left">
         <p className="font-mono text-[10px] uppercase tracking-widest text-cyan-400/70">

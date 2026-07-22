@@ -58,8 +58,9 @@ class TestShowImage:
 
 
 class _FakeResponse:
-    def __init__(self, payload: dict):
+    def __init__(self, payload: dict, status: int = 200):
         self._payload = payload
+        self.status = status
 
     async def json(self) -> dict:
         return self._payload
@@ -72,13 +73,18 @@ class _FakeResponse:
 
 
 class _FakeHttp:
-    def __init__(self, payload: dict):
+    def __init__(self, payload: dict, dead_assets: set[str] | None = None):
         self._payload = payload
+        self._dead = dead_assets or set()
         self.calls = 0
 
     def get(self, url: str, params: dict | None = None) -> _FakeResponse:
         self.calls += 1
         return _FakeResponse(self._payload)
+
+    def head(self, url: str, allow_redirects: bool = True) -> _FakeResponse:
+        status = 404 if any(d in url for d in self._dead) else 200
+        return _FakeResponse({}, status=status)
 
 
 class TestNasaImageSearch:
@@ -115,6 +121,36 @@ class TestNasaImageSearch:
                 raise OSError("down")
 
         result = await skytools.search_nasa_image("uranus", _Boom())  # type: ignore[arg-type]
+        assert "Continue without" in result
+
+    async def test_dead_asset_falls_back_to_next_candidate(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Best-scored hit has no downloadable file -> next candidate is used."""
+        sent: list[dict] = []
+
+        async def fake_publish(payload: dict) -> bool:
+            sent.append(payload)
+            return True
+
+        monkeypatch.setattr(skytools, "publish_ui", fake_publish)
+        payload = {
+            "collection": {
+                "items": [
+                    {"data": [{"nasa_id": "webb-dead", "title": "James Webb Space Telescope art"}]},
+                    {"data": [{"nasa_id": "webb-good", "title": "James Webb Space Telescope"}]},
+                ]
+            }
+        }
+        http = _FakeHttp(payload, dead_assets={"webb-dead"})
+        result = await skytools.search_nasa_image("james webb space telescope", http)  # type: ignore[arg-type]
+        assert sent and sent[0]["id"] == "nasa:webb-good"
+        assert "On screen now" in result
+
+    async def test_all_assets_dead_degrades(self) -> None:
+        payload = {"collection": {"items": [{"data": [{"nasa_id": "x1", "title": "a"}]}]}}
+        http = _FakeHttp(payload, dead_assets={"x1"})
+        result = await skytools.search_nasa_image("anything", http)  # type: ignore[arg-type]
         assert "Continue without" in result
 
 

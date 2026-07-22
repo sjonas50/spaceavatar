@@ -41,6 +41,8 @@ GALLERY: dict[str, dict[str, str]] = {
 
 NASA_IMAGES_API = "https://images-api.nasa.gov/search"
 NASA_ASSETS_HOST = "https://images-assets.nasa.gov"
+# NASA's CDN 403s aiohttp's default UA; identify ourselves honestly instead.
+_USER_AGENT = "CommanderSky/1.0 (space museum exhibit; educational)"
 
 ISS_API = "https://api.wheretheiss.at/v1/satellites/25544"
 LAUNCH_API = "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=1"
@@ -89,7 +91,9 @@ async def search_nasa_image(query: str, http: aiohttp.ClientSession | None = Non
     astronauts are real search results).
     """
     owned = http is None
-    session = http or aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=6))
+    session = http or aiohttp.ClientSession(
+        timeout=aiohttp.ClientTimeout(total=6), headers={"User-Agent": _USER_AGENT}
+    )
     try:
         params = {"media_type": "image", "q": query}
         async with session.get(NASA_IMAGES_API, params=params) as resp:
@@ -104,23 +108,35 @@ async def search_nasa_image(query: str, http: aiohttp.ClientSession | None = Non
             title = (item.get("data") or [{}])[0].get("title", "").lower()
             return sum(1 for t in terms if t in title)
 
-        best = max(items, key=score)
-        meta = (best.get("data") or [{}])[0]
-        nasa_id = meta.get("nasa_id", "")
-        title = meta.get("title", "From the NASA archive")[:120]
-        if not nasa_id:
-            return "No archive imagery found for that. Continue without a picture."
-
-        src = f"{NASA_ASSETS_HOST}/image/{nasa_id}/{nasa_id}~medium.jpg"
-        sent = await publish_ui(
-            {"type": "show_image", "id": f"nasa:{nasa_id}", "src": src, "caption": title}
-        )
-        if not sent:
-            return "The screen isn't available right now. Continue without the picture."
-        return (
-            f"On screen now: {title}. Keep answering the visitor's actual question — "
-            "the picture just illustrates it."
-        )
+        # Best-scored candidates first; verify the asset file actually exists —
+        # many archive entries have no ~medium rendition (silent 404 otherwise).
+        candidates = sorted(items, key=score, reverse=True)[:3]
+        for item in candidates:
+            meta = (item.get("data") or [{}])[0]
+            nasa_id = meta.get("nasa_id", "")
+            if not nasa_id:
+                continue
+            for size in ("~medium.jpg", "~orig.jpg"):
+                src = f"{NASA_ASSETS_HOST}/image/{nasa_id}/{nasa_id}{size}"
+                try:
+                    async with session.head(src, allow_redirects=True) as head:
+                        if head.status != 200:
+                            continue
+                except Exception:
+                    continue
+                title = meta.get("title", "From the NASA archive")[:120]
+                sent = await publish_ui(
+                    {"type": "show_image", "id": f"nasa:{nasa_id}", "src": src, "caption": title}
+                )
+                if not sent:
+                    return "The screen isn't available right now. Continue without the picture."
+                log.info("nasa_image_shown", nasa_id=nasa_id)
+                return (
+                    f"On screen now: {title}. Keep answering the visitor's actual "
+                    "question — the picture just illustrates it."
+                )
+        log.info("nasa_image_no_usable_asset", candidates=len(candidates))
+        return "No usable archive imagery for that. Continue without a picture."
     except Exception as exc:
         log.warning("nasa_search_failed", reason=type(exc).__name__)
         return "The image archive isn't reachable right now. Continue without a picture."
