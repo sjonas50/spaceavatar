@@ -224,8 +224,13 @@ async def entrypoint(ctx: JobContext) -> None:
     # audio_enabled must be False in cloud-avatar mode or audio plays twice.
     avatar = create_avatar(settings)
     if avatar is not None:
+        avatar_started = asyncio.get_running_loop().time()
         await avatar.start(session, room=ctx.room)
         await avatar.wait_for_join()
+        log.info(
+            "avatar_joined",
+            avatar_join_ms=round((asyncio.get_running_loop().time() - avatar_started) * 1000),
+        )
 
     agent = build_agent(settings)
     enable_guard_speculation(session, agent)

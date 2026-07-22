@@ -4,7 +4,7 @@ test("home page auto-connects and fails friendly without config", async ({ page 
   // Dev server runs without LiveKit credentials — the token API returns 500 and
   // the kid must see a friendly message + retry, never a raw error.
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /Commander Sky/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /commander sky/i })).toBeVisible();
   await expect(page.getByTestId("session-error")).toContainText("mission control");
   await page.getByTestId("retry-session").click();
   await expect(page.getByTestId("session-error")).toBeVisible();

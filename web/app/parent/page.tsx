@@ -2,7 +2,7 @@ import { ParentGate } from "@/components/ParentGate";
 
 export default function ParentPage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-8 bg-slate-950 p-8 text-white">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-8 p-8 text-white">
       <ParentGate>
         <section className="flex max-w-md flex-col gap-4">
           <h1 className="text-3xl font-bold">Parent settings</h1>

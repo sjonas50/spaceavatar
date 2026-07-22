@@ -3,9 +3,8 @@
 import { useLocalParticipant, useTranscriptions } from "@livekit/components-react";
 
 /**
- * Live caption of what Commander Sky is saying, streamed from the agent's
- * transcription text stream. Reserved space keeps the layout stable whether
- * or not she's talking.
+ * Live comms readout of what Commander Sky is saying — one sentence at a
+ * time. Reserved space keeps the layout stable whether or not she's talking.
  */
 export function Captions() {
   const { localParticipant } = useLocalParticipant();
@@ -24,10 +23,11 @@ export function Captions() {
     <div
       aria-live="polite"
       data-testid="captions"
-      className="flex min-h-20 w-full max-w-2xl items-center justify-center px-6"
+      className="flex min-h-16 w-full max-w-2xl items-center justify-center px-6"
     >
       {current ? (
-        <p className="rounded-2xl bg-slate-900/80 px-5 py-3 text-center text-lg leading-relaxed text-slate-100 shadow-lg">
+        <p className="rounded-xl border border-cyan-400/15 bg-slate-950/70 px-5 py-2.5 text-center font-mono text-base leading-relaxed text-cyan-100/90 backdrop-blur">
+          <span className="mr-2 text-cyan-500/70">»</span>
           {current}
         </p>
       ) : null}

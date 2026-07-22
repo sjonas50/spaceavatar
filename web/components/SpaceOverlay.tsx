@@ -43,7 +43,7 @@ export function SpaceOverlay() {
     <button
       aria-label={`Dismiss picture: ${image.caption}`}
       onClick={() => setImage(null)}
-      className="absolute right-4 top-4 z-10 w-[42vw] max-w-md overflow-hidden rounded-2xl bg-slate-900/90 shadow-2xl ring-2 ring-slate-700 transition-transform hover:scale-[1.02]"
+      className="absolute right-4 top-4 z-10 w-[42vw] max-w-md overflow-hidden rounded-2xl border border-cyan-400/25 bg-slate-950/85 shadow-[0_0_50px_rgba(34,211,238,0.15)] backdrop-blur transition-transform hover:scale-[1.02]"
     >
       <Image
         src={image.src}
@@ -53,7 +53,12 @@ export function SpaceOverlay() {
         className="h-auto w-full object-cover"
         priority
       />
-      <p className="px-4 py-3 text-left text-sm text-slate-200">{image.caption}</p>
+      <div className="px-4 py-3 text-left">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-cyan-400/70">
+          Mission archive
+        </p>
+        <p className="text-sm text-slate-200">{image.caption}</p>
+      </div>
     </button>
   );
 }

@@ -1,55 +1,35 @@
 "use client";
 
 import { VideoTrack, useVoiceAssistant } from "@livekit/components-react";
+import { TransmissionBoot } from "@/components/TransmissionBoot";
 
 /**
- * Fullscreen avatar area.
- *
- * - lemonslice mode: renders the avatar's synced video track.
- * - frontend/none mode (no video track): renders the locally-animated
- *   character — floats when idle, glows while speaking. Never a spinner.
+ * The exhibit viewport: avatar video in a framed "orbital link" window,
+ * with the transmission boot sequence while the feed comes up.
  */
 export function AvatarView() {
   const { state, videoTrack } = useVoiceAssistant();
+  const live = state === "listening" || state === "speaking" || state === "thinking";
 
   return (
-    <div className="relative flex w-full flex-1 flex-col items-center justify-center">
-      {videoTrack ? (
-        <VideoTrack
-          trackRef={videoTrack}
-          className="max-h-[70vh] w-auto rounded-3xl object-contain"
+    <div className="flex w-full flex-1 flex-col items-center justify-center gap-4 px-4">
+      <div className="flex items-center gap-2 self-center rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-mono uppercase tracking-widest text-slate-300 backdrop-blur">
+        <span
+          className={`live-dot inline-block h-2 w-2 rounded-full ${live ? "bg-emerald-400" : "bg-amber-400"}`}
         />
-      ) : (
-        <FrontendCharacter speaking={state === "speaking"} connected={state !== "connecting"} />
-      )}
-    </div>
-  );
-}
-
-/** Placeholder Commander Sky for frontend mode until the designed character lands. */
-function FrontendCharacter({
-  speaking,
-  connected,
-}: {
-  speaking: boolean;
-  connected: boolean;
-}) {
-  return (
-    <div className="flex flex-col items-center gap-6" data-testid="frontend-character">
-      <div
-        className={`text-[10rem] leading-none transition-transform duration-500 ${
-          speaking
-            ? "scale-110 drop-shadow-[0_0_40px_rgba(52,211,153,0.8)]"
-            : "animate-[float_3s_ease-in-out_infinite]"
-        }`}
-      >
-        🧑‍🚀
+        {live ? "Live — orbital link" : "Acquiring link"}
       </div>
-      {!connected && (
-        <p className="animate-pulse text-xl text-slate-300">
-          Commander Sky is floating over…
-        </p>
-      )}
+
+      <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-cyan-400/20 bg-slate-950/60 shadow-[0_0_80px_rgba(34,211,238,0.12)] backdrop-blur">
+        {videoTrack ? (
+          <VideoTrack trackRef={videoTrack} className="max-h-[62vh] w-full object-contain" />
+        ) : (
+          <div className="flex min-h-[40vh] flex-col items-center justify-center gap-6 p-8">
+            <div className="animate-[float_3s_ease-in-out_infinite] text-7xl">🧑‍🚀</div>
+            <TransmissionBoot />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

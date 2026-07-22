@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #020412;
+  --foreground: #e8ecf8;
 }
 
 @theme inline {
@@ -12,17 +12,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
 /* Idle animation for the frontend-rendered Commander Sky character */
@@ -34,4 +27,83 @@ body {
   50% {
     transform: translateY(-16px);
   }
+}
+
+/* --- Space museum theme ----------------------------------------------- */
+
+.font-display {
+  font-family: var(--font-display), system-ui, sans-serif;
+  letter-spacing: 0.04em;
+}
+
+/* Two drifting star layers + a faint nebula glow, pure CSS */
+.starfield {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 120%, rgba(56, 89, 179, 0.25), transparent 70%),
+    radial-gradient(ellipse 40% 30% at 80% 10%, rgba(103, 63, 179, 0.18), transparent 70%),
+    #020412;
+}
+.starfield::before,
+.starfield::after {
+  content: "";
+  position: absolute;
+  inset: -100% 0 0 0;
+  background-image:
+    radial-gradient(1px 1px at 12% 24%, #fff, transparent),
+    radial-gradient(1px 1px at 32% 68%, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(1.5px 1.5px at 51% 12%, #fff, transparent),
+    radial-gradient(1px 1px at 66% 44%, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(1.5px 1.5px at 78% 81%, #fff, transparent),
+    radial-gradient(1px 1px at 89% 31%, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(1px 1px at 21% 89%, rgba(255, 255, 255, 0.75), transparent),
+    radial-gradient(1.5px 1.5px at 43% 47%, rgba(255, 255, 255, 0.85), transparent);
+  background-size: 520px 520px;
+  animation: star-drift 240s linear infinite;
+}
+.starfield::after {
+  background-size: 340px 340px;
+  opacity: 0.55;
+  animation-duration: 150s;
+}
+
+@keyframes star-drift {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(50%);
+  }
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.blinking-cursor::after {
+  content: "▌";
+  animation: blink 1s step-end infinite;
+  margin-left: 0.15em;
+}
+
+@keyframes pulse-live {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(52, 211, 153, 0);
+  }
+}
+.live-dot {
+  animation: pulse-live 2s ease-out infinite;
 }
