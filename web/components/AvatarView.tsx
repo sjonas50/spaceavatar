@@ -4,8 +4,9 @@ import { VideoTrack, useVoiceAssistant } from "@livekit/components-react";
 import { TransmissionBoot } from "@/components/TransmissionBoot";
 
 /**
- * The exhibit viewport: avatar video in a framed "orbital link" window,
- * with the transmission boot sequence while the feed comes up.
+ * The exhibit viewport: avatar video in a framed "orbital link" window.
+ * Boot sequence while the feed spins up; audio-only presentation if the
+ * agent is live but no video track ever arrives (avatar fallback mode).
  */
 export function AvatarView() {
   const { state, videoTrack } = useVoiceAssistant();
@@ -17,16 +18,33 @@ export function AvatarView() {
         <span
           className={`live-dot inline-block h-2 w-2 rounded-full ${live ? "bg-emerald-400" : "bg-amber-400"}`}
         />
-        {live ? "Live — orbital link" : "Acquiring link"}
+        {videoTrack ? "Live — orbital link" : live ? "Live — audio-only link" : "Acquiring link"}
       </div>
 
       <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-cyan-400/20 bg-slate-950/60 shadow-[0_0_80px_rgba(34,211,238,0.12)] backdrop-blur">
         {videoTrack ? (
-          <VideoTrack trackRef={videoTrack} className="max-h-[62vh] w-full object-contain" />
+          // Keyed on the track so the reveal animation replays on (re)connect
+          <div key={videoTrack.publication?.trackSid ?? "video"} className="signal-acquired">
+            <VideoTrack trackRef={videoTrack} className="max-h-[62vh] w-full object-contain" />
+          </div>
         ) : (
           <div className="flex min-h-[40vh] flex-col items-center justify-center gap-6 p-8">
-            <div className="animate-[float_3s_ease-in-out_infinite] text-7xl">🧑‍🚀</div>
-            <TransmissionBoot />
+            <div
+              className={`text-7xl ${
+                state === "speaking"
+                  ? "scale-110 drop-shadow-[0_0_40px_rgba(52,211,153,0.7)] transition-transform"
+                  : "animate-[float_3s_ease-in-out_infinite]"
+              }`}
+            >
+              🧑‍🚀
+            </div>
+            {live ? (
+              <p className="font-mono text-xs uppercase tracking-widest text-cyan-400/70">
+                Video feed offline — voice link active
+              </p>
+            ) : (
+              <TransmissionBoot />
+            )}
           </div>
         )}
       </div>

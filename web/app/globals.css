@@ -95,6 +95,27 @@ body {
   margin-left: 0.15em;
 }
 
+/* Video feed reveal: static-y blur snapping into focus, like a signal locking on */
+@keyframes signal-acquired {
+  0% {
+    opacity: 0;
+    transform: scale(0.94);
+    filter: blur(14px) saturate(0.2) brightness(1.6);
+  }
+  55% {
+    opacity: 1;
+    filter: blur(3px) saturate(1.25) brightness(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0) saturate(1) brightness(1);
+  }
+}
+.signal-acquired {
+  animation: signal-acquired 1s ease-out both;
+}
+
 @keyframes pulse-live {
   0%,
   100% {

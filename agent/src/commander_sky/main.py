@@ -222,15 +222,23 @@ async def entrypoint(ctx: JobContext) -> None:
 
     # Canonical avatar ordering: avatar.start -> wait_for_join -> session.start.
     # audio_enabled must be False in cloud-avatar mode or audio plays twice.
+    # If the avatar can't start (no credits, vendor outage), degrade to
+    # voice-only instead of killing the session — she should always talk.
+    audio_enabled = room_audio_enabled(settings)
     avatar = create_avatar(settings)
     if avatar is not None:
         avatar_started = asyncio.get_running_loop().time()
-        await avatar.start(session, room=ctx.room)
-        await avatar.wait_for_join()
-        log.info(
-            "avatar_joined",
-            avatar_join_ms=round((asyncio.get_running_loop().time() - avatar_started) * 1000),
-        )
+        try:
+            await avatar.start(session, room=ctx.room)
+            await avatar.wait_for_join()
+            log.info(
+                "avatar_joined",
+                avatar_join_ms=round((asyncio.get_running_loop().time() - avatar_started) * 1000),
+            )
+        except Exception as exc:
+            log.warning("avatar_unavailable_voice_only", reason=type(exc).__name__)
+            avatar = None
+            audio_enabled = True  # agent publishes its own audio instead
 
     agent = build_agent(settings)
     enable_guard_speculation(session, agent)
@@ -241,7 +249,7 @@ async def entrypoint(ctx: JobContext) -> None:
     await session.start(
         agent=agent,
         room=ctx.room,
-        room_output_options=RoomOutputOptions(audio_enabled=room_audio_enabled(settings)),
+        room_output_options=RoomOutputOptions(audio_enabled=audio_enabled),
     )
     log.info("session_started", avatar_mode=settings.avatar_mode.value)
     _watch_visitor_departure(ctx, session)
