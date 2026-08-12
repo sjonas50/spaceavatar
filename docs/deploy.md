@@ -13,8 +13,14 @@ Two deployables: the Next.js web app (Vercel) and the Python agent worker
       - `ACCESS_CODE` — set it to require an invite code before any session.
       - `MAX_SESSIONS_PER_DAY` (default 50) — worst-case daily spend is
         roughly `sessions × minutes × ~$0.15`.
-- [ ] LiveKit plan: Build (free) is fine for a soft launch; Ship ($50/mo)
-      removes 10–20s worker cold starts and the 5-concurrent-agent cap.
+- [ ] LiveKit plan: Build (free) is fine for a soft launch. Note (verified
+      2026-08-12): "cold start prevention" and the 5-concurrent-agent cap
+      apply only to agents *hosted on LiveKit Cloud* — our worker is
+      self-hosted on Fly with `min_machines_running=1`, so it is always warm
+      and those limits don't apply. What Build actually caps for us is
+      WebRTC participant minutes (5,000/mo free; each session consumes
+      minutes for visitor + agent + avatar participants) — upgrade to Ship
+      ($50/mo, then $0.01/min) when usage approaches that.
 - [ ] If the audience may include children: counsel review per
       `docs/compliance.md` **before** the URL is shared.
 
