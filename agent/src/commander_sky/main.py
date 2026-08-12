@@ -190,8 +190,13 @@ def _watch_visitor_departure(ctx: JobContext, session: AgentSession) -> None:
     close_task: list[asyncio.Task] = []  # keep a reference so the task isn't GC'd
 
     def _human_count() -> int:
+        # Kind, not identity substring: the agent and avatar join as
+        # PARTICIPANT_KIND_AGENT; a visitor whose random identity happened to
+        # contain "avatar" would previously have been miscounted.
         return sum(
-            1 for p in ctx.room.remote_participants.values() if "avatar" not in (p.identity or "")
+            1
+            for p in ctx.room.remote_participants.values()
+            if p.kind == rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD
         )
 
     def _on_disconnect(_participant: object) -> None:

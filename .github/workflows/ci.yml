@@ -43,6 +43,9 @@ jobs:
       # ci's strict check on linux (long-standing npm issue). install still
       # honors the lockfile for everything resolvable.
       - run: npm install --no-audit --no-fund
+      # Fail on known-vulnerable production deps (review 2026-08-12); dev
+      # tooling advisories are noise at this stage, hence --omit=dev.
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm run lint
       - run: npm run build
       - run: npx playwright install --with-deps chromium

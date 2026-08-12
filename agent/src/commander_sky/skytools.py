@@ -9,6 +9,7 @@ should shrug charmingly, never stall.
 
 import json
 import time
+import urllib.parse
 from typing import Any
 
 import aiohttp
@@ -116,8 +117,11 @@ async def search_nasa_image(query: str, http: aiohttp.ClientSession | None = Non
             nasa_id = meta.get("nasa_id", "")
             if not nasa_id:
                 continue
+            # nasa_id comes from the archive API response — encode it so a
+            # hostile/odd id can't alter the URL path we fetch and publish.
+            safe_id = urllib.parse.quote(nasa_id, safe="")
             for size in ("~medium.jpg", "~orig.jpg"):
-                src = f"{NASA_ASSETS_HOST}/image/{nasa_id}/{nasa_id}{size}"
+                src = f"{NASA_ASSETS_HOST}/image/{safe_id}/{safe_id}{size}"
                 try:
                     async with session.head(src, allow_redirects=True) as head:
                         if head.status != 200:
