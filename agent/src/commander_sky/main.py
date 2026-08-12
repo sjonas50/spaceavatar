@@ -54,6 +54,18 @@ SPACE_KEYTERMS = [
     "spacesuit",
     "countdown",
     "blast off",
+    "satellite",
+    "GPS",
+    "Mars",
+    "rover",
+    "telescope",
+    "Artemis",
+    "SpaceX",
+    "Starlink",
+    "black hole",
+    "comet",
+    "asteroid",
+    "meteor",
 ]
 
 

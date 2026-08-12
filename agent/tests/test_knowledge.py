@@ -13,8 +13,8 @@ def kb() -> KnowledgeBase:
 
 class TestCorpus:
     def test_archive_has_substance(self, kb: KnowledgeBase) -> None:
-        assert len(list(KNOWLEDGE_DIR.glob("*.md"))) >= 6
-        assert len(kb.chunks) >= 25
+        assert len(list(KNOWLEDGE_DIR.glob("*.md"))) >= 13
+        assert len(kb.chunks) >= 55
 
     def test_chunks_are_heading_sections(self, kb: KnowledgeBase) -> None:
         for chunk in kb.chunks:
@@ -40,6 +40,24 @@ class TestRetrieval:
             ("how does GPS work", "satellites_earth_tech", "atomic clocks"),
             ("what is space junk", "satellites_earth_tech", "Kessler"),
             ("starlink internet satellites", "satellites_earth_tech", "Starlink"),
+            ("tell me about the mars rovers", "mars_exploration", "Perseverance"),
+            ("helicopter on mars", "mars_exploration", "Ingenuity"),
+            ("was there ever water on mars", "mars_exploration", "lake"),
+            ("how long to get to mars", "mars_exploration", "six to nine months"),
+            ("james webb telescope", "telescopes_discoveries", "sunshield"),
+            ("planets around other stars", "telescopes_discoveries", "transit"),
+            ("gravitational waves", "telescopes_discoveries", "LIGO"),
+            ("why was hubble blurry", "telescopes_discoveries", "mirror"),
+            ("what killed the dinosaurs", "comets_asteroids_meteors", "Chicxulub"),
+            ("could we stop an asteroid hitting earth", "comets_asteroids_meteors", "DART"),
+            ("what is a shooting star", "comets_asteroids_meteors", "meteor"),
+            ("halley's comet", "comets_asteroids_meteors", "2061"),
+            ("what does JAXA do", "space_agencies_programs", "Hayabusa"),
+            ("tell me about spacex", "space_agencies_programs", "Falcon 9"),
+            ("who runs mission control", "space_agencies_programs", "Houston"),
+            ("artemis 2 mission", "artemis_moon_future", "April 2026"),
+            ("why land at the lunar south pole", "artemis_moon_future", "water ice"),
+            ("gateway station", "artemis_moon_future", "lunar orbit"),
         ],
     )
     def test_finds_relevant_chunk(
