@@ -1,7 +1,7 @@
 """The Commander Sky agent: persona LLM wrapped in the safety guards."""
 
 import time
-from collections.abc import AsyncIterable
+from collections.abc import AsyncIterable, Callable
 from typing import Any, Literal
 
 from livekit.agents import Agent, ModelSettings, StopResponse, function_tool, llm
@@ -79,11 +79,13 @@ class CommanderSkyAgent(Agent):
         input_guard: InputGuard,
         output_guard: OutputGuard,
         knowledge: KnowledgeBase | None = None,
+        guard_ms_hook: Callable[[float], None] | None = None,
     ):
         super().__init__(instructions=instructions)
         self._input_guard = input_guard
         self._output_guard = output_guard
         self._knowledge = knowledge if knowledge is not None else KnowledgeBase()
+        self._guard_ms_hook = guard_ms_hook
 
     async def on_user_turn_completed(
         self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage
@@ -100,6 +102,8 @@ class CommanderSkyAgent(Agent):
             guard_ms=guard_ms,
             speculative_hit=speculative_hit,
         )
+        if self._guard_ms_hook is not None:
+            self._guard_ms_hook(guard_ms)
 
         if verdict.action is GuardAction.CANNED:
             assert verdict.canned_response_id is not None  # enforced by GuardVerdict

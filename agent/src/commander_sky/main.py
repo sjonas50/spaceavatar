@@ -9,6 +9,7 @@ Run modes:
 import asyncio
 import os
 import sys
+from collections.abc import Callable
 
 from livekit import rtc
 from livekit.agents import AgentSession, JobContext, RoomOutputOptions, WorkerOptions, cli
@@ -26,7 +27,7 @@ from commander_sky.config import Settings, load_settings
 from commander_sky.costs import SessionCostTracker
 from commander_sky.facts import load_facts
 from commander_sky.logging import configure_logging, get_logger
-from commander_sky.metrics import log_pipeline_metrics
+from commander_sky.metrics import TurnLatencyTracker, log_pipeline_metrics
 from commander_sky.persona import build_system_prompt
 from commander_sky.safety import InputGuard, OutputGuard
 from commander_sky.sky_agent import CommanderSkyAgent, enable_guard_speculation
@@ -56,7 +57,9 @@ SPACE_KEYTERMS = [
 ]
 
 
-def build_agent(settings: Settings) -> CommanderSkyAgent:
+def build_agent(
+    settings: Settings, guard_ms_hook: Callable[[float], None] | None = None
+) -> CommanderSkyAgent:
     """Persona agent wrapped in the input/output safety guards."""
     return CommanderSkyAgent(
         instructions=build_system_prompt(load_facts()),
@@ -66,6 +69,7 @@ def build_agent(settings: Settings) -> CommanderSkyAgent:
             timeout_s=settings.guard_timeout_s,
         ),
         output_guard=OutputGuard(max_chars=settings.output_max_chars),
+        guard_ms_hook=guard_ms_hook,
     )
 
 
@@ -279,11 +283,19 @@ async def entrypoint(ctx: JobContext) -> None:
             avatar = None
             audio_enabled = True  # agent publishes its own audio instead
 
-    agent = build_agent(settings)
+    latency = TurnLatencyTracker()
+    session.on("metrics_collected", latency.on_metrics)
+
+    agent = build_agent(settings, guard_ms_hook=latency.on_guard_ms)
     enable_guard_speculation(session, agent)
 
     tracker = SessionCostTracker(settings, guard=agent._input_guard)
     session.on("metrics_collected", tracker.on_metrics)
+
+    async def _final_latency() -> None:
+        latency.log_summary()
+
+    ctx.add_shutdown_callback(_final_latency)
 
     await session.start(
         agent=agent,
