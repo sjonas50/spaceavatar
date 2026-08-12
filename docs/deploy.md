@@ -30,7 +30,9 @@ Two deployables: the Next.js web app (Vercel) and the Python agent worker
    **`web/`** (framework auto-detects Next.js).
 2. Environment variables (Production):
    - `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`
-   - `MAX_SESSION_MINUTES` (e.g. 15)
+   - `MAX_SESSION_MINUTES` (e.g. 15) — **must match the agent's value on Fly**:
+     the web side mints the token TTL (+2m grace), the agent enforces the cap;
+     if they drift, sessions end confusingly (token death instead of sign-off)
    - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
    - `SESSIONS_PER_IP_PER_HOUR` (e.g. 6), `MAX_SESSIONS_PER_DAY` (e.g. 50)
    - `ACCESS_CODE` (recommended for soft launch)

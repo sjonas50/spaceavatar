@@ -17,7 +17,9 @@ RUN uv sync --frozen --no-dev
 RUN useradd -m worker && chown -R worker /app
 USER worker
 
-# Pre-download any model/plugin assets at build time, not per cold start
-RUN uv run python -m commander_sky.main download-files || true
+# Pre-download any model/plugin assets at build time, not per cold start.
+# Must fail the build loudly: a silent miss here means model downloads on
+# first session instead (review 2026-07-17 + 2026-08-12).
+RUN uv run python -m commander_sky.main download-files
 
 CMD ["uv", "run", "python", "-m", "commander_sky.main", "start"]

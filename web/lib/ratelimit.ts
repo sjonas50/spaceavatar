@@ -59,9 +59,16 @@ async function checkUpstash(url: string, token: string, ip: string): Promise<Res
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`upstash ${res.status}`);
-  const rows = (await res.json()) as { result: number }[];
-  const ipCount = rows[0]?.result ?? 0;
-  const dayCount = rows[2]?.result ?? 0;
+  // Pipeline rows are {result} on success but {error} per failed command.
+  // A missing count must throw (-> in-memory fallback in the caller), never
+  // coerce to 0 — that would fail open at the cost-control chokepoint.
+  const rows = (await res.json()) as { result?: number; error?: string }[];
+  const ipCount = rows[0]?.result;
+  const dayCount = rows[2]?.result;
+  if (typeof ipCount !== "number" || typeof dayCount !== "number") {
+    const detail = rows.find((r) => r.error)?.error ?? "missing pipeline result";
+    throw new Error(`upstash pipeline: ${detail}`);
+  }
 
   if (dayCount > DAILY_LIMIT) return { allowed: false, reason: "daily_cap" };
   if (ipCount > IP_LIMIT) return { allowed: false, reason: "ip_limit" };
