@@ -157,6 +157,13 @@ Cartesia voice to match. Gotchas hit: `ANAM_AVATAR_ID` must be an avatar ID,
 not a persona ID (400 otherwise; resolve via `GET /v1/personas/{id}` →
 `avatar.id`).
 
+**Plan upgrade (2026-08-12, post-trial):** free → **Explorer** — 250 min/mo
+included, $0.14/min overage, 5 concurrent sessions, 3 custom avatars, standard
+retention. `cost_avatar_per_min` default raised 0.10 → 0.14 to match. ZDR
+remains Enterprise-only, so trial gate 4 (retention posture) is unchanged.
+Custom-avatar restyle (gate 1) is now possible on-plan but owner is keeping
+stock "Leo" for now.
+
 ## Ranked Options
 
 | Rank | Option | Latency | Stylized | Plugin | Self-serve $/min | Key risk |

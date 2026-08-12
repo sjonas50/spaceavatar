@@ -86,8 +86,8 @@ them together or the lowest one silently throttles you:
 
 | Layer | Limit | Where to raise |
 |---|---|---|
-| Anam concurrent sessions | free 1 · Starter 1 · Explorer 3 · Growth 5 · Professional 10 | anam.ai self-serve tiers (ZDR = Enterprise/sales) |
-| Anam minutes/month | free 30 · Growth 2,000 · Professional 5,000 | same — when exhausted mid-session the avatar dies; the agent degrades to voice-only (canned "video link dropped" line) |
+| Anam concurrent sessions | free 1 · Starter 3 · **Explorer 5 (current plan)** · Growth 5 · Professional 10 (per anam.ai/pricing 2026-08-12) | anam.ai self-serve tiers (ZDR = Enterprise/sales) |
+| Anam minutes/month | free 30 · Starter 50 · **Explorer 250 + $0.14/min overage (current plan)** · Growth 2,000 · Professional 5,000 | same — when exhausted mid-session the avatar dies; the agent degrades to voice-only (canned "video link dropped" line) |
 | LiveKit participant minutes | Build 5,000/mo free; each session burns ~3× wall-clock (visitor + agent + avatar participants) ≈ 1,600 session-min/mo | Ship $50/mo then $0.01/min. NB: LiveKit "cold start prevention"/agent caps apply only to LiveKit-hosted agents — ours is on Fly, always warm |
 | Fly machine | 1 shared-cpu machine ≈ dozens of concurrent voice sessions (pipeline is I/O-bound) | `fly scale count 2` + LiveKit dispatches across workers |
 

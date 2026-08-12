@@ -112,7 +112,7 @@ class Settings(BaseSettings):
     cost_guard_per_call: float = Field(default=0.0007, ge=0)
     cost_tts_per_1k_chars: float = Field(default=0.03, ge=0)
     cost_stt_per_min: float = Field(default=0.0077, ge=0)
-    cost_avatar_per_min: float = Field(default=0.10, ge=0)
+    cost_avatar_per_min: float = Field(default=0.14, ge=0)  # Anam Explorer overage rate
     cost_livekit_per_min: float = Field(default=0.01, ge=0)
 
 
