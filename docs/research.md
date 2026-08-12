@@ -119,3 +119,100 @@ Phase 0 becomes a **bake-off**: LemonSlice vs frontend-3D on (a) measured end-to
 - COPPA amendments: https://www.dataprotectionreport.com/2025/06/ftcs-coppa-rule-changes-include-ai-training-consent-requirement/ · FTC FAQ: https://www.ftc.gov/business-guidance/resources/complying-coppa-frequently-asked-questions
 - LiveKit pricing/limits: https://livekit.com/pricing · https://docs.livekit.io/deploy/admin/quotas-and-limits/
 - WebRTC + Private Relay: https://webrtchacks.com/apples-not-so-private-relay-fails-with-webrtc/
+
+---
+
+# Addendum 2026-08-12: LemonSlice Replacement — Avatar Vendor Re-survey
+
+**Trigger:** LemonSlice sales unresponsive; better tiers sales-gated; mid-tier
+pricing/concurrency undisclosed. Owner decision: replace. Three parallel research
+passes (vendor landscape, prior art, pricing/risk) on 2026-08-12.
+
+## Executive Summary
+
+The July ruling that eliminated Anam no longer holds: **CARA-4 (released
+2026-07-14) added animated-3D/anime avatar support** via Anam Lab's restyle
+workflow, making the latency leader (~150ms avatar generation, #1 on the 2026
+Avatar Benchmark, `livekit-plugins-anam` tracking agents 1.6.x, self-serve
+tiers) compatible with the stylized requirement — though its stylized output
+quality is 4 weeks old and unreviewed by any third party. **bitHuman
+Expression-2** (2026-07-10) is the only purpose-built cartoon/creature model
+with a current 1.6.x plugin and is 3–8× cheaper. **Hedra's realtime product is
+dead** (sunset 2026-04-15). A **frontend-rendered character** (Rive or
+TalkingHead.js driven by Cartesia phoneme timestamps) remains the structural
+end-state: lowest latency (<200ms to first viseme), zero per-minute cost, zero
+user A/V leaving our infra — at the cost of character design + rig work.
+
+## Decision (owner, 2026-08-12): trial Anam first
+
+`AVATAR_MODE=anam` implemented behind the existing adapter. Free tier
+(30 min/mo, 1 concurrent) suffices for the quality + latency eval.
+
+**Trial outcome (same day):** live session succeeded end-to-end — avatar join
+1,102ms (vs LemonSlice's "<3s" claim), video 1152×768, lip-sync via Cartesia
+passthrough with no sample-rate changes. Owner accepted the stock photoreal
+"Leo — Deep Space Explorer" avatar for now (relaxes the stylized-only rule;
+gate 1 below thereby deferred, not answered). Voice switched to a masculine
+Cartesia voice to match. Gotchas hit: `ANAM_AVATAR_ID` must be an avatar ID,
+not a persona ID (400 otherwise; resolve via `GET /v1/personas/{id}` →
+`avatar.id`).
+
+## Ranked Options
+
+| Rank | Option | Latency | Stylized | Plugin | Self-serve $/min | Key risk |
+|---|---|---|---|---|---|---|
+| 1 | **Anam CARA-4** | ~150ms gen; <1s p50 connect | Yes (new, unreviewed) | 1.6.6 ✅ | ~$0.11–0.16 + tiers | Stylized quality unproven; 5 concurrent on Growth; ZDR Enterprise-only |
+| 2 | **bitHuman Expression-2** | <200ms claimed | Yes (purpose-built) | 1.6.7 ✅ | ~$0.024–0.04 | Plugin 3 wks old; prior "low res/bitrate" reputation; cloud retention undocumented |
+| 3 | **Frontend render** (Rive / TalkingHead.js + Cartesia `add_phoneme_timestamps`) | <200ms first viseme | Yes (full control) | n/a (own code) | ~$0 | Character rig is design work; need timestamp relay agent→browser (plugin doesn't pass them through) |
+| 4 | Simli | <300ms | Unvalidated | 1.5.6 ⚠️ lags | ~$0.009–0.05 (unverified) | Idle-motion artifacts; plugin on 1.5.x; retention unverified |
+| 5 | Beyond Presence (S2V API) | ≤250ms | No | ~1.6.x | ~€0.0875–0.175 | "Request access" gate; human-only |
+| — | HeyGen LiveAvatar | n/a | No | 1.5.15 ⚠️ | $0.10 (Lite) | **Disqualified: trains on user data by default below Enterprise**; GPU-supply incidents |
+| — | Tavus | <500ms | No | 1.6.4 | $0.37 | Disqualified: cost |
+| — | Hedra | — | — | dead | — | Product sunset 2026-04-15 |
+| — | D-ID | slow | No | none | $0.32 | Disqualified: cost, latency, no plugin |
+
+## Verified During Implementation (plugin 1.6.6 source, 2026-08-12)
+
+- **Startup order question (old Open Question #5) resolved:** the Anam plugin
+  subclasses LiveKit's base `AvatarSession`; the canonical order
+  (`avatar.start` → `wait_for_join` → `session.start` with room audio
+  disabled) applies unchanged. Web reports claiming "session-first for Anam"
+  reflect an older API.
+- **The 16kHz TTS claim does not apply:** the plugin streams to Anam via
+  `DataStreamAudioOutput` at 24kHz and the framework resamples — no Cartesia
+  `sample_rate` change needed.
+- API surface: `PersonaConfig(name, avatarId, avatarModel, directorNotes)`;
+  Director Notes (`presetStyle` XOR `customStylePrompt`, `expressivity` 0–1)
+  are CARA-4-only performance controls.
+
+## Trial Gates (measure before committing)
+
+1. **Stylized quality:** Commander Sky image → Anam Lab "Animated 3D" restyle —
+   the single unverified claim that decides everything.
+2. **Latency:** utterance-end → first avatar frame p50/p95 via existing
+   `metrics.py` timers; compare against LemonSlice baseline and 1.2s budget.
+3. **BYO-TTS latency:** Anam's ~150ms figure may assume their bundled TTS;
+   measure with Cartesia Sonic-3.5 feeding the passthrough path.
+4. **Retention posture:** ZDR is Enterprise-only; standard-tier data handling
+   terms need reading before any public deploy (docs/compliance.md).
+
+**Fallbacks:** quality fails → bitHuman Expression-2 (same adapter, cheap to
+add); both cloud options fail → frontend render is the strategic end-state
+(prior-art pass found complete recipes: Rive state machine or TalkingHead.js,
+Cartesia phoneme timestamps relayed over a LiveKit data channel; Cartesia TTFB
+<100ms + ~5ms relay + local render).
+
+**Not viable:** self-hosted ML avatars (MuseTalk/LiveTalking) — 2–4s first
+chunk kills conversational feel; warm-GPU floor (~$554/mo) only beats managed
+above ~20k min/mo.
+
+## Addendum Sources
+
+- Anam CARA-4 launch: https://anam.ai/blog/meet-our-most-expressive-model-yet-cara-4 · models: https://anam.ai/docs/introduction/models · LiveKit guide: https://docs.livekit.io/agents/models/avatar/plugins/anam/ · PyPI: https://pypi.org/project/livekit-plugins-anam/
+- bitHuman: pricing https://docs.bithuman.ai/guides/pricing/ · plugin https://docs.livekit.io/agents/models/avatar/plugins/bithuman/ · PyPI: https://pypi.org/project/livekit-plugins-bithuman/
+- Hedra sunset: https://docs.livekit.io/agents/models/avatar/plugins/hedra/ (deprecated notice)
+- HeyGen data-training default: https://www.heygen.com/security · API pricing: https://help.heygen.com/en/articles/10060327-heygen-api-pricing-explained · GPU incident: https://status.heygen.com/incidents/01KWD01H361NCACK79HAQ3DHHQ
+- Beyond Presence pricing: https://www.beyondpresence.ai/pricing · Simli: https://docs.simli.com/overview
+- Frontend route: TalkingHead.js https://github.com/met4citizen/TalkingHead · Rive viseme lip-sync https://dev.to/uianimation/how-to-build-real-time-ai-lip-sync-using-rive-state-machine-viseme-data-26o7 · Cartesia WS phoneme timestamps: https://docs.cartesia.ai/api-reference/tts/websocket
+- Self-hosted (rejected): https://github.com/lipku/LiveTalking · RunPod pricing: https://www.runpod.io/pricing
+- Cost/landscape cross-checks: https://www.spatius.ai/blog/compare-pricing-leading-ai-avatar-services-2026/ · https://gofranz.com/blog/real-time-ai-avatars-what-they-actually-cost/ · https://www.docket.io/blog/heygen-vs-tavus-vs-anam-vs-simli-how-we-chose-dockets-ai-avatar-provider

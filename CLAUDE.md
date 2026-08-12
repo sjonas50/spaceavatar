@@ -31,7 +31,7 @@ npx playwright test              # e2e
 ## Architecture Decisions (locked — don't relitigate)
 
 - **Fictional character**, not Neil Armstrong likeness (no estate licensing). Teaches *about* Armstrong with attribution.
-- **Avatar is swappable** behind `avatar.py` adapter (`AVATAR_MODE=lemonslice|frontend|none`). Anam is ruled out: photoreal-only, conflicts with stylized requirement.
+- **Avatar is swappable** behind `avatar.py` adapter (`AVATAR_MODE=lemonslice|anam|frontend|none`). **Current: Anam CARA-4** (owner decision 2026-08-12) replacing LemonSlice (sales-gated tiers, unresponsive sales; see docs/research.md addendum). Owner accepted a stock *photoreal* avatar ("Leo — Deep Space Explorer") for now, relaxing the stylized-only rule — the fictional-character/no-real-person-likeness rule still holds. Measured avatar join: ~1.1s. bitHuman Expression-2 is the fallback; frontend-rendered is the strategic end-state. Anam gotcha: `ANAM_AVATAR_ID` must be an *avatar* ID, not a persona ID (Anam 400s otherwise).
 - **No-retention COPPA architecture**: no audio persisted, no transcripts persisted, **no conversation content in any log line** — metrics only (latency, error rates, guard counts). Deepgram calls always set `mip_opt_out=true`.
 - **Mic mode** — owner decision 2026-07-17: default is auto-connect + always-on
   open mic with mute toggle (`NEXT_PUBLIC_MIC_MODE=open`). Push-to-talk
