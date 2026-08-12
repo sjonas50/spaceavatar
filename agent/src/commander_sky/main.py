@@ -350,6 +350,25 @@ def dry_run() -> int:
     Constructors perform no network I/O, so success means: config parses,
     facts load, persona builds, and all plugin wiring is valid.
     """
+    stubbed = _stub_missing_credentials()
+    settings = load_settings()
+    agent = build_agent(settings)
+    session = build_session(settings)
+    audio = room_audio_enabled(settings)
+    agent_kind = type(agent).__name__
+    print(f"dry-run OK: avatar_mode={settings.avatar_mode.value}, guarded_agent={agent_kind}")
+    print(f"  agent_audio_enabled={audio}, stubbed_keys={stubbed or 'none'}")
+    # AgentSession spins up background machinery lazily; nothing to close here.
+    assert session is not None
+    return 0
+
+
+def _stub_missing_credentials() -> list[str]:
+    """Fill absent credential env vars with placeholders; return what was stubbed.
+
+    For keyless commands (dry-run, build-time download-files) that construct
+    the pipeline or drive the framework CLI without any network auth.
+    """
     placeholders = {
         "LIVEKIT_URL": "wss://dry-run.invalid",
         "LIVEKIT_API_KEY": "dry-run",
@@ -361,17 +380,7 @@ def dry_run() -> int:
     stubbed = [key for key in placeholders if not os.getenv(key)]
     for key in stubbed:
         os.environ[key] = placeholders[key]
-
-    settings = load_settings()
-    agent = build_agent(settings)
-    session = build_session(settings)
-    audio = room_audio_enabled(settings)
-    agent_kind = type(agent).__name__
-    print(f"dry-run OK: avatar_mode={settings.avatar_mode.value}, guarded_agent={agent_kind}")
-    print(f"  agent_audio_enabled={audio}, stubbed_keys={stubbed or 'none'}")
-    # AgentSession spins up background machinery lazily; nothing to close here.
-    assert session is not None
-    return 0
+    return stubbed
 
 
 def _export_livekit_env(settings: Settings) -> None:
@@ -388,6 +397,14 @@ def _export_livekit_env(settings: Settings) -> None:
 def main() -> None:
     if "dry-run" in sys.argv[1:]:
         raise SystemExit(dry_run())
+    if "download-files" in sys.argv[1:]:
+        # Build-time asset prefetch runs keyless in the Docker build — it only
+        # touches plugin model downloads, never the network APIs. Requiring
+        # real settings here made the step fail (and, while it was silenced
+        # with `|| true`, models downloaded per cold start instead).
+        _stub_missing_credentials()
+        cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
+        return
     _export_livekit_env(load_settings())
     cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
 
