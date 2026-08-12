@@ -196,10 +196,14 @@ stock "Leo" for now.
 
 1. **Stylized quality:** Commander Sky image → Anam Lab "Animated 3D" restyle —
    the single unverified claim that decides everything.
-2. **Latency:** utterance-end → first avatar frame p50/p95 via existing
-   `metrics.py` timers; compare against LemonSlice baseline and 1.2s budget.
-3. **BYO-TTS latency:** Anam's ~150ms figure may assume their bundled TTS;
-   measure with Cartesia Sonic-3.5 feeding the passthrough path.
+2. **Latency:** ~~utterance-end → first avatar frame p50/p95~~ **MEASURED
+   2026-08-12 (probe v2, docs/latency-baseline.md): perceived p50 ≈ 4.6s vs
+   1.2s budget — fails, but identically without the avatar; Anam's marginal
+   cost is within noise (≲0.5s). The budget is blown by Flux EOT (~1.0s) +
+   Sonnet TTFT (~1.3s) + delivery path (~1.4s), not the avatar.**
+3. **BYO-TTS latency:** ~~Anam's ~150ms figure may assume their bundled TTS~~
+   **MEASURED same day: Cartesia passthrough adds no gross penalty; ~150ms
+   claim unresolvable at n=5 but bounded by the ≲0.5s noise floor.**
 4. **Retention posture:** ZDR is Enterprise-only; standard-tier data handling
    terms need reading before any public deploy (docs/compliance.md).
 
