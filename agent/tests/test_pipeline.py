@@ -1,5 +1,8 @@
 """Pipeline wiring tests: everything must construct offline with fake credentials."""
 
+import asyncio
+from types import SimpleNamespace
+
 import pytest
 
 from commander_sky.avatar import (
@@ -108,3 +111,57 @@ async def test_dry_run_exits_zero(fake_env: dict[str, str]) -> None:
     from commander_sky.main import dry_run
 
     assert dry_run() == 0
+
+
+class TestAvatarDeathFallback:
+    """Mid-session avatar death must reroute audio, not freeze the session."""
+
+    @staticmethod
+    def _fakes(monkeypatch: pytest.MonkeyPatch):
+        from commander_sky import main as main_mod
+
+        handlers: dict[str, object] = {}
+        room = SimpleNamespace(on=lambda name, cb: handlers.setdefault(name, cb))
+        ctx = SimpleNamespace(room=room)
+
+        class FakeOutput:
+            tail = None
+
+            def replace_audio_tail(self, sink: object) -> None:
+                self.tail = sink
+
+        session = SimpleNamespace(
+            output=FakeOutput(),
+            said=[],
+            interrupted=False,
+        )
+        session.interrupt = lambda: setattr(session, "interrupted", True)
+        session.say = lambda text: session.said.append(text)
+
+        class StubParticipantAudioOutput:
+            def __init__(self, room: object, **_: object) -> None:
+                pass
+
+            async def start(self) -> None:
+                pass
+
+        monkeypatch.setattr(main_mod, "_ParticipantAudioOutput", StubParticipantAudioOutput)
+        main_mod._watch_avatar_departure(ctx, session, "anam-avatar-agent")
+        return session, handlers["participant_disconnected"]
+
+    async def test_avatar_disconnect_reroutes_audio(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        session, on_disconnect = self._fakes(monkeypatch)
+        on_disconnect(SimpleNamespace(identity="anam-avatar-agent"))
+        await asyncio.sleep(0.01)
+        assert session.output.tail is not None
+        assert session.interrupted
+        assert session.said, "must acknowledge the video loss in character"
+
+    async def test_human_disconnect_does_not_trigger_fallback(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        session, on_disconnect = self._fakes(monkeypatch)
+        on_disconnect(SimpleNamespace(identity="explorer-1234"))
+        await asyncio.sleep(0.01)
+        assert session.output.tail is None
+        assert not session.said
