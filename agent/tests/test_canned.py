@@ -10,6 +10,7 @@ ALL_IDS = [
     canned.SENSITIVE_DEFAULT,
     canned.OUTPUT_FALLBACK,
     canned.SIGN_OFF,
+    canned.AVATAR_LOST,
 ]
 
 

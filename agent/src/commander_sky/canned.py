@@ -9,6 +9,7 @@ DISTRESS_DEFAULT = "distress_default"
 SENSITIVE_DEFAULT = "sensitive_default"
 OUTPUT_FALLBACK = "output_fallback"
 SIGN_OFF = "sign_off"
+AVATAR_LOST = "avatar_lost"
 
 _RESPONSES: dict[str, str] = {
     # The user may be in real distress. Brief, human, no improvised counseling.
@@ -27,6 +28,11 @@ _RESPONSES: dict[str, str] = {
         "Whoops — my radio crackled there for a second. Here's one for you though: on the "
         "Moon you could jump six times higher than on Earth. What else can I tell you "
         "about space?"
+    ),
+    # The avatar video died mid-session; audio continues directly.
+    AVATAR_LOST: (
+        "Whoa — my video link just dropped out, but you've still got my voice loud and "
+        "clear. Where were we?"
     ),
     # Session time limit reached.
     SIGN_OFF: (

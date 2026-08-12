@@ -10,12 +10,18 @@ import asyncio
 import os
 import sys
 
+from livekit import rtc
 from livekit.agents import AgentSession, JobContext, RoomOutputOptions, WorkerOptions, cli
+
+# Private framework class: the same room-publishing audio output RoomIO builds
+# when audio_enabled=True. We construct one lazily for the mid-session
+# avatar-death fallback; re-verify on livekit-agents upgrades.
+from livekit.agents.voice.room_io._output import _ParticipantAudioOutput
 from livekit.plugins import anthropic, cartesia, deepgram
 
 from commander_sky import skytools
 from commander_sky.avatar import create_avatar, room_audio_enabled
-from commander_sky.canned import SIGN_OFF, get_canned
+from commander_sky.canned import AVATAR_LOST, SIGN_OFF, get_canned
 from commander_sky.config import Settings, load_settings
 from commander_sky.costs import SessionCostTracker
 from commander_sky.facts import load_facts
@@ -180,6 +186,39 @@ def _watch_visitor_departure(ctx: JobContext, session: AgentSession) -> None:
     ctx.room.on("participant_disconnected", _on_disconnect)
 
 
+def _watch_avatar_departure(ctx: JobContext, session: AgentSession, avatar_identity: str) -> None:
+    """Degrade to voice-only if the avatar dies mid-session.
+
+    In cloud-avatar mode all TTS audio flows to the avatar vendor, which
+    republishes it synced to video — so a vendor-side death (credits run out,
+    outage) silences the agent entirely and the session appears frozen. On the
+    avatar participant disconnecting, publish our own audio track and swap it
+    in as the output tail, then say so in character.
+    """
+
+    fallback_task: list[asyncio.Task] = []  # keep a reference so the task isn't GC'd
+
+    async def _reroute() -> None:
+        output = _ParticipantAudioOutput(
+            ctx.room,
+            sample_rate=24000,
+            num_channels=1,
+            track_publish_options=rtc.TrackPublishOptions(source=rtc.TrackSource.SOURCE_MICROPHONE),
+        )
+        await output.start()
+        session.output.replace_audio_tail(output)
+        session.interrupt()  # clear any speech stuck waiting on the dead avatar
+        session.say(get_canned(AVATAR_LOST))
+
+    def _on_disconnect(participant: rtc.RemoteParticipant) -> None:
+        if participant.identity != avatar_identity or fallback_task:
+            return
+        log.warning("avatar_lost_voice_only_fallback")
+        fallback_task.append(asyncio.create_task(_reroute()))
+
+    ctx.room.on("participant_disconnected", _on_disconnect)
+
+
 async def _end_session_after_limit(session: AgentSession, minutes: int) -> None:
     """Friendly hard stop at the session cap (cost control + kid wellbeing)."""
     await asyncio.sleep(minutes * 60)
@@ -253,6 +292,8 @@ async def entrypoint(ctx: JobContext) -> None:
     )
     log.info("session_started", avatar_mode=settings.avatar_mode.value)
     _watch_visitor_departure(ctx, session)
+    if avatar is not None:
+        _watch_avatar_departure(ctx, session, avatar.avatar_identity)
 
     limit_task = asyncio.create_task(
         _end_session_after_limit(session, settings.max_session_minutes)
