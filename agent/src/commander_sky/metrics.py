@@ -24,6 +24,11 @@ _NUMERIC_FIELDS = (
     "input_tokens",
     "output_tokens",
     "characters_count",
+    # LLM prompt-cache visibility (U1.3): a low cached/prompt ratio means the
+    # static persona prefix is unstable and TTFT is paying for it.
+    "prompt_tokens",
+    "prompt_cached_tokens",
+    "completion_tokens",
 )
 
 

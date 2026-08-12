@@ -46,7 +46,7 @@ def enable_guard_speculation(session: Any, agent: "CommanderSkyAgent") -> None:
     """
     buffer: list[str] = []
     last_interim_spec = [0.0]
-    interim_throttle_s = 0.7
+    interim_throttle_s = 0.4  # was 0.7 — earlier coverage of long utterances
 
     def _on_transcribed(ev: Any) -> None:
         text = (getattr(ev, "transcript", "") or "").strip()

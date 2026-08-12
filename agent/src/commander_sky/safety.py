@@ -20,6 +20,9 @@ from commander_sky.models import GuardAction, GuardCategory, GuardVerdict
 
 log = get_logger("safety")
 
+# Everything except word characters and spaces — see InputGuard._key.
+_KEY_STRIP_RE = re.compile(r"[^\w\s]")
+
 _CLASSIFIER_PROMPT = """\
 You classify what a user just said to "Commander Sky", a voice-based astronaut \
 character in a space-education app for a general audience. Respond with exactly \
@@ -81,7 +84,11 @@ class InputGuard:
 
     @staticmethod
     def _key(text: str) -> str:
-        return " ".join(text.split()).lower()
+        """Normalize aggressively: interim transcripts lack the punctuation and
+        casing the final adds ("how does gps work" vs "How does GPS work?"), and
+        an exact-text key made speculation miss on most turns (0-670ms of
+        avoidable serial guard time in the 2026-08-12 baseline)."""
+        return " ".join(_KEY_STRIP_RE.sub("", text).split()).lower()
 
     def speculate(self, text: str) -> None:
         """Start classifying ``text`` in the background (idempotent per text)."""

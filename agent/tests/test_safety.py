@@ -100,6 +100,17 @@ class TestGuardSpeculation:
         _, hit = await guard.classify("how big is the moon")
         assert hit is True
 
+    async def test_punctuation_normalized(self) -> None:
+        """Interim transcripts lack the final's punctuation — the speculation
+        must still hit or the guard re-classifies on the serial path
+        (regression: 0-670ms avoidable guard time in the 2026-08-12 baseline)."""
+        guard = _make_guard("fine")
+        guard.speculate("how does gps work")  # interim: no punctuation, lowercase
+        await asyncio.sleep(0)
+        _, hit = await guard.classify("How does GPS work?")
+        assert hit is True
+        assert guard.test_calls == 1
+
     async def test_mismatched_final_text_classifies_fresh(self) -> None:
         guard = _make_guard("fine")
         guard.speculate("how big is")  # stale prefix

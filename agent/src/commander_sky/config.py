@@ -73,7 +73,9 @@ class Settings(BaseSettings):
     # Models (env-overridable so provider model bumps don't need a code change)
     llm_model: str = "claude-sonnet-4-6"
     guard_model: str = "claude-haiku-4-5"
-    guard_timeout_s: float = Field(default=2.5, gt=0)
+    # 1.5s (was 2.5): p99 classify is well under 1s; a hung call now fails
+    # closed sooner instead of stalling the reply (still canned, never unsafe).
+    guard_timeout_s: float = Field(default=1.5, gt=0)
     output_max_chars: int = Field(default=700, gt=0)
     stt_model: str = "flux-general-en"
     tts_model: str = "sonic-3.5"
