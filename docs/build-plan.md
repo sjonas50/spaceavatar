@@ -128,3 +128,96 @@ cd agent && uv run ruff check . && uv run pytest && docker build -t commander-sk
 | 5 Hardening/Launch | L | 3, 4 |
 
 ~25 tasks total. Phases 3 and 4 can run in parallel (backend vs frontend engineer) once the Phase 2 bake-off decision lands.
+
+---
+
+# Upgrade Plan (2026-08-12): Latency · Knowledge · Polish
+
+Phases 0–5 shipped and deployed (Vercel + Fly, Anam CARA-4 avatar). This plan
+takes the live product further. Same rule: **a phase is complete only when its
+gate passes.**
+
+**Measured baseline (prod session, 2026-08-12):** endpointing 0.5s (prod
+default) · input guard up to **1,337ms even on a speculative hit** · LLM TTFT
+**~1.49s** · Cartesia TTFB 117–494ms · avatar join 1.1–4.2s. Per-turn serial
+latency (utterance-end → first audio) ≈ **2.5–3.5s**. Target: **≤1.5s p50,
+≤2.5s p95**.
+
+The serial reply path is `eou_delay → guard → LLM TTFT → TTS TTFB → avatar`.
+The two fat targets are the guard (should be ~0 on speculative hits) and LLM
+TTFT (should be ~0.6–0.9s with a warm prompt cache).
+
+## Phase U0 — Turn-Latency Instrumentation (S)
+
+Can't cut what we can't see per-turn.
+
+| # | Task | Files |
+|---|---|---|
+| U0.1 | `TurnLatency` aggregator: per turn, sum `end_of_utterance_delay` (EOUMetrics) + `guard_ms` + LLM `ttft` + TTS `ttfb`; emit `turn_latency` log line per turn and p50/p95 in the final session snapshot. Content-free as ever. | `metrics.py`, `main.py`, `tests/test_no_content_logging.py` |
+| U0.2 | Baseline capture: scripted 6-turn local session (Playwright fake-mic driver from scratchpad → `web/e2e/latency-probe.ts`), record the table | `docs/latency-baseline.md` |
+
+**Gate:** `uv run pytest` + committed baseline table.
+
+## Phase U1 — Serial-Path Latency Cuts (M)
+
+| # | Task | Files |
+|---|---|---|
+| U1.1 | Guard prompt caching: `cache_control: ephemeral` on the classifier system prompt (it's static), cap `max_tokens` at the one-word answer; log guard cache hits | `safety.py` |
+| U1.2 | Speculation coverage: start speculation on the *first* interim transcript (current throttle waits too long — prod showed 1.3s awaits on "hits"); log `speculation_ready` vs `awaited_ms`; drop `guard_timeout_s` default 2.5→1.5 (fail-closed unchanged) | `safety.py`, `sky_agent.py`, `config.py` |
+| U1.3 | LLM cache observability: log `cache_read_input_tokens` / `cache_creation_input_tokens` per turn; a cache-miss streak means the prefix is unstable — find and fix | `metrics.py` |
+| U1.4 | Prompt diet: count persona+facts tokens (prod first turn showed ~20k prompt tokens); move any fact not needed for instant recall into the archive corpus; target < 8k. Smaller prefix = faster TTFT even on cache hits | `persona.py`, `facts/*.md`, `knowledge/` |
+| U1.5 | Sync local `.env` endpointing 0.9→0.5 to match prod; verify preemptive generation actually fires (log when eager EOT wins the race) | `.env`, `main.py` |
+
+**Gate:** `uv run pytest` + dry-run + measured on the U0.2 probe: guard p50 <150ms, speculative-hit rate >80%, turn e2e p50 ≤1.5s.
+
+## Phase U2 — Knowledge Expansion (M)
+
+Same pattern as `satellites_earth_tech.md`: curated, dated, review-header,
+heading-level chunks, retrieval tests per file.
+
+| # | Task | Files |
+|---|---|---|
+| U2.1 | `mars_exploration.md` — rovers Sojourner→Perseverance, Ingenuity, why Mars, water evidence, sample return status (dated) | `knowledge/` |
+| U2.2 | `telescopes_discoveries.md` — Hubble/JWST deep dives, exoplanets & transit method, gravitational waves/LIGO, famous images | `knowledge/` |
+| U2.3 | `comets_asteroids_meteors.md` — belt/Kuiper/Oort, dinosaur impact, DART planetary defense, meteor showers, Bennu/OSIRIS-REx | `knowledge/` |
+| U2.4 | `space_agencies_programs.md` — NASA/ESA/JAXA/ISRO/CNSA highlights, international cooperation, commercial space (SpaceX/Blue Origin/Rocket Lab) | `knowledge/` |
+| U2.5 | `artemis_moon_future.md` — Artemis status (dated as of mid-2026), Gateway, lunar south pole & water ice, Mars ambitions | `knowledge/` |
+| U2.6 | Keyterm expansion for STT biasing: satellite, GPS, Mars, rover, telescope, Artemis, SpaceX, Starlink, black hole, comet, asteroid | `main.py` `SPACE_KEYTERMS` |
+| U2.7 | Recall sweep: ≥25 parametrized retrieval queries across all 13 corpus files; if any file's recall disappoints, record the BM25→embeddings swap decision in `docs/architecture.md` | `tests/test_knowledge.py` |
+
+**Gate:** `uv run pytest tests/test_knowledge.py tests/test_pipeline.py -v`
+
+## Phase U3 — Quality Gates & Resilience E2E (M)
+
+| # | Task | Files |
+|---|---|---|
+| U3.1 | Extend `persona_script.yaml` with satellite/Mars/telescope questions; run the live 30+ question LLM-judge gate (`RUN_PERSONA_SCRIPT=1`, real keys) | `tests/persona_script.yaml` |
+| U3.2 | Playwright e2e: avatar-death fallback (voice continues + in-character line) and 90s idle shutdown | `web/e2e/` |
+| U3.3 | Guard red-team additions for the new scope (e.g. "spy satellites on my neighbor" → still guarded; "how do I jam GPS" → sensitive) | `tests/test_safety.py` |
+
+**Gate:** live persona script pass + `npx playwright test` + `uv run pytest tests/test_safety.py -v`
+
+## Phase U4 — Ops Polish (S)
+
+| # | Task | Files |
+|---|---|---|
+| U4.1 | Latency SLO: warn-level log when a turn's e2e exceeds 2.5s (`turn_latency_slo_breach`) so slow turns are greppable in Fly logs | `metrics.py` |
+| U4.2 | Scale checklist: Anam tier upgrade steps, concurrency math (Anam concurrent cap vs LiveKit participant minutes vs Fly machine count) | `docs/deploy.md` |
+
+**Gate:** `uv run pytest` + updated docs.
+
+## Sequence & Complexity
+
+| Phase | Complexity | Depends on |
+|---|---|---|
+| U0 Instrumentation | S | — |
+| U1 Latency cuts | M | U0 (need the numbers) |
+| U2 Knowledge | M | — (parallel with U0/U1) |
+| U3 Quality gates | M | U1, U2 |
+| U4 Ops polish | S | U1 |
+
+~19 tasks. U2 is independent — it can interleave with the latency work.
+Out of scope (recorded, not planned): frontend-rendered avatar (strategic
+end-state per research addendum), embeddings retrieval (only if U2.7 shows
+BM25 recall gaps), LLM model swap (Sonnet stays — persona quality is the
+product).
