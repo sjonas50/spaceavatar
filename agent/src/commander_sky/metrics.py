@@ -88,6 +88,10 @@ class TurnLatencyTracker:
         if "eou_ms" in turn and "ttfb_ms" in turn:
             self._complete(speech_id, turn)
 
+    #: p95 target (docs/latency-baseline.md); breaches log at warning so slow
+    #: turns are greppable in production logs without content.
+    SLO_TOTAL_MS = 2500.0
+
     def _complete(self, speech_id: str, turn: dict[str, float]) -> None:
         del self._turns[speech_id]
         if self._pending_guard_ms is not None:
@@ -95,11 +99,10 @@ class TurnLatencyTracker:
             self._pending_guard_ms = None
         total_ms = round(sum(turn.values()), 1)
         self.totals_ms.append(total_ms)
-        log.info(
-            "turn_latency",
-            total_ms=total_ms,
-            **{name: round(value, 1) for name, value in turn.items()},
-        )
+        components = {name: round(value, 1) for name, value in turn.items()}
+        log.info("turn_latency", total_ms=total_ms, **components)
+        if total_ms > self.SLO_TOTAL_MS:
+            log.warning("turn_latency_slo_breach", total_ms=total_ms, **components)
 
     def summary(self) -> dict[str, float] | None:
         """p50/p95 across the session's completed turns, or None if there were none."""

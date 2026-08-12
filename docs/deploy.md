@@ -77,6 +77,22 @@ Notes:
 - [ ] Test from a phone on cellular (exercises TURN relay).
 - [ ] Confirm session hard-stops: 15-minute limit and `MAX_SESSION_COST_USD`.
 
+## Scale checklist (added 2026-08-12)
+
+Concurrency is capped by the **minimum** of three independent limits — raise
+them together or the lowest one silently throttles you:
+
+| Layer | Limit | Where to raise |
+|---|---|---|
+| Anam concurrent sessions | free 1 · Starter 1 · Explorer 3 · Growth 5 · Professional 10 | anam.ai self-serve tiers (ZDR = Enterprise/sales) |
+| Anam minutes/month | free 30 · Growth 2,000 · Professional 5,000 | same — when exhausted mid-session the avatar dies; the agent degrades to voice-only (canned "video link dropped" line) |
+| LiveKit participant minutes | Build 5,000/mo free; each session burns ~3× wall-clock (visitor + agent + avatar participants) ≈ 1,600 session-min/mo | Ship $50/mo then $0.01/min. NB: LiveKit "cold start prevention"/agent caps apply only to LiveKit-hosted agents — ours is on Fly, always warm |
+| Fly machine | 1 shared-cpu machine ≈ dozens of concurrent voice sessions (pipeline is I/O-bound) | `fly scale count 2` + LiveKit dispatches across workers |
+
+Watch in logs: `turn_latency_slo_breach` (>2.5s turn), `avatar_unavailable_voice_only`
+(Anam quota/outage at start), `avatar_lost_voice_only_fallback` (mid-session death),
+`session_cost` snapshots vs vendor dashboards monthly.
+
 ## Cost guardrails summary
 
 | Layer | Control |

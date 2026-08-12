@@ -93,3 +93,11 @@ class TestSummary:
 
     def test_summary_none_without_turns(self) -> None:
         assert TurnLatencyTracker().summary() is None
+
+
+def test_slo_breach_logged_for_slow_turn(capsys) -> None:  # type: ignore[no-untyped-def]
+    tracker = TurnLatencyTracker()
+    _drive_turn(tracker, "slow", eou_s=1.0, guard_ms=800.0, ttft_s=1.5, ttfb_s=0.3)
+    _drive_turn(tracker, "fast", eou_s=0.3, guard_ms=10.0, ttft_s=0.8, ttfb_s=0.1)
+    out = capsys.readouterr().out
+    assert out.count("turn_latency_slo_breach") == 1  # slow turn only
