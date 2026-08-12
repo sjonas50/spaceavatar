@@ -4,6 +4,7 @@ import pytest
 
 from commander_sky.avatar import (
     AvatarConfigError,
+    anam_director_notes,
     character_kwargs,
     create_avatar,
     room_audio_enabled,
@@ -45,6 +46,44 @@ class TestAvatarAdapter:
     def test_lemonslice_without_character_fails(self, settings: Settings) -> None:
         with pytest.raises(AvatarConfigError, match="AGENT_ID"):
             create_avatar(settings)
+
+    def test_anam_mode_builds_avatar(self, settings: Settings) -> None:
+        configured = settings.model_copy(
+            update={"avatar_mode": AvatarMode.ANAM, "anam_avatar_id": "sky-cara-01"}
+        )
+        assert create_avatar(configured) is not None
+        assert room_audio_enabled(configured) is False
+
+    def test_anam_without_key_fails(self, settings: Settings) -> None:
+        broken = settings.model_copy(
+            update={
+                "avatar_mode": AvatarMode.ANAM,
+                "anam_api_key": None,
+                "anam_avatar_id": "sky-cara-01",
+            }
+        )
+        with pytest.raises(AvatarConfigError, match="ANAM_API_KEY"):
+            create_avatar(broken)
+
+    def test_anam_without_avatar_id_fails(self, settings: Settings) -> None:
+        broken = settings.model_copy(update={"avatar_mode": AvatarMode.ANAM})
+        with pytest.raises(AvatarConfigError, match="ANAM_AVATAR_ID"):
+            create_avatar(broken)
+
+    def test_anam_preset_style_wins_over_default_prompt(self, settings: Settings) -> None:
+        """Anam 400s when presetStyle and customStylePrompt are both set — an
+        explicit preset must suppress the persona's default style prompt."""
+        configured = settings.model_copy(update={"anam_preset_style": "warm"})
+        notes = anam_director_notes(configured)
+        assert notes is not None
+        assert notes.presetStyle == "warm"
+        assert notes.customStylePrompt is None
+
+    def test_anam_no_director_notes_when_unset(self, settings: Settings) -> None:
+        configured = settings.model_copy(
+            update={"anam_preset_style": None, "anam_style_prompt": None}
+        )
+        assert anam_director_notes(configured) is None
 
     def test_exactly_one_character_kwarg_never_none(self, settings: Settings) -> None:
         """LemonSlice rejects sessions when >1 identity kwarg is passed — an

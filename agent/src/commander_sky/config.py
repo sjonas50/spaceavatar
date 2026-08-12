@@ -14,8 +14,14 @@ class AvatarMode(StrEnum):
     """Which avatar rendering path the worker uses (docs/architecture.md ADRs)."""
 
     LEMONSLICE = "lemonslice"
+    ANAM = "anam"
     FRONTEND = "frontend"
     NONE = "none"
+
+    @property
+    def is_cloud(self) -> bool:
+        """Cloud-rendered modes: the vendor republishes TTS audio synced to video."""
+        return self in (AvatarMode.LEMONSLICE, AvatarMode.ANAM)
 
 
 class Settings(BaseSettings):
@@ -36,6 +42,7 @@ class Settings(BaseSettings):
     deepgram_api_key: SecretStr
     cartesia_api_key: SecretStr
     lemonslice_api_key: SecretStr | None = None
+    anam_api_key: SecretStr | None = None
 
     # Avatar
     avatar_mode: AvatarMode = AvatarMode.LEMONSLICE
@@ -51,6 +58,17 @@ class Settings(BaseSettings):
         "a friendly astronaut listening — still and relaxed with a gentle floating "
         "sway, calm neutral face with a hint of a smile"
     )
+    # Anam (CARA-4): avatar built in Anam Lab (animated-3D restyle), referenced
+    # by ID. Director notes steer expressive performance; preset_style and
+    # style_prompt are mutually exclusive (Anam rejects the pair with HTTP 400).
+    anam_avatar_id: str | None = None
+    anam_avatar_name: str = "Commander Sky"
+    anam_avatar_model: str | None = None
+    anam_preset_style: str | None = None
+    anam_style_prompt: str | None = (
+        "a calm, warm astronaut storyteller — gentle smile, relaxed and friendly"
+    )
+    anam_expressivity: float | None = Field(default=None, ge=0.0, le=1.0)
 
     # Models (env-overridable so provider model bumps don't need a code change)
     llm_model: str = "claude-sonnet-4-6"

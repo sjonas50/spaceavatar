@@ -12,6 +12,7 @@ FAKE_ENV = {
     "DEEPGRAM_API_KEY": "fake-deepgram",
     "CARTESIA_API_KEY": "fake-cartesia",
     "LEMONSLICE_API_KEY": "fake-lemonslice",
+    "ANAM_API_KEY": "fake-anam",
 }
 
 

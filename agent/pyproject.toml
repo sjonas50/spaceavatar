@@ -13,6 +13,7 @@ dependencies = [
     # transitive via livekit-agents; floor pinned past GHSA-xf7x-x43h-rpqh
     "json-repair>=0.60.1",
     "rank-bm25>=0.2.2",
+    "livekit-plugins-anam>=1.6.6",
 ]
 
 [dependency-groups]

@@ -405,6 +405,7 @@ source = { editable = "." }
 dependencies = [
     { name = "json-repair" },
     { name = "livekit-agents", extra = ["anthropic", "cartesia", "deepgram"] },
+    { name = "livekit-plugins-anam" },
     { name = "livekit-plugins-lemonslice" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -425,6 +426,7 @@ dev = [
 requires-dist = [
     { name = "json-repair", specifier = ">=0.60.1" },
     { name = "livekit-agents", extras = ["deepgram", "anthropic", "cartesia"], specifier = "~=1.6" },
+    { name = "livekit-plugins-anam", specifier = ">=1.6.6" },
     { name = "livekit-plugins-lemonslice", specifier = ">=1.5" },
     { name = "pydantic", specifier = ">=2.7" },
     { name = "pydantic-settings", specifier = ">=2.3" },
@@ -892,6 +894,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/ba/9a/7cdf1a77d5fd80e06533d4f2584c45d2c978f1249338969f814502db45ad/livekit_local_inference-0.2.6-cp314-cp314-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:80dc582413d816c86a0620410c2bfc3234e782a49d2b07b4bed0ff6285bdf4a1", size = 34824215, upload-time = "2026-06-24T16:55:45.02Z" },
     { url = "https://files.pythonhosted.org/packages/86/f2/0207071f236f639cf9515838ce98cfc3a8c1b19db8e6f46350e7231f2200/livekit_local_inference-0.2.6-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:9c148ec2735e903dc00e37dc2580e0417f67ec7ee4be119dca7844b104afbfe9", size = 34868380, upload-time = "2026-06-24T16:55:48.119Z" },
     { url = "https://files.pythonhosted.org/packages/1e/91/c194db20c8e9272cadf0913d42392cda5eec5e78a14820a3fa678e42e4b6/livekit_local_inference-0.2.6-cp314-cp314-win_amd64.whl", hash = "sha256:4140e4fd60dd7b7d69a55e1d454d5d893f8ffe026c30e0d7cd31fa42b10d5621", size = 34914243, upload-time = "2026-06-24T16:55:51.322Z" },
+]
+
+[[package]]
+name = "livekit-plugins-anam"
+version = "1.6.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "livekit-agents" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7d/8a/d6f9bb66bd6a6d1627e8e221343c7b175ba85ac7bff5231b6661c19cdc46/livekit_plugins_anam-1.6.6.tar.gz", hash = "sha256:b52f534e16da309ce994f322870d42916de7f99de8d315188b32471a9e589efd", size = 7616, upload-time = "2026-07-18T04:17:03.727Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f9/0f/96269f37e21b6d233655dbbc0ada476a34a66290c1a648f43428df5f8468/livekit_plugins_anam-1.6.6-py3-none-any.whl", hash = "sha256:8f72fd2ac3ff7165f2e72dc8d913bc02eb6cbaa15b3cea677a8e30c38ed85133", size = 8739, upload-time = "2026-07-18T04:17:02.664Z" },
 ]
 
 [[package]]

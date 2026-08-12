@@ -9,7 +9,7 @@ Everything emitted is numbers; never conversation content.
 import time
 from typing import Any
 
-from commander_sky.config import AvatarMode, Settings
+from commander_sky.config import Settings
 from commander_sky.logging import get_logger
 from commander_sky.safety import InputGuard
 
@@ -23,7 +23,7 @@ class SessionCostTracker:
         self._s = settings
         self._guard = guard
         self._started = time.monotonic()
-        self._avatar_active = settings.avatar_mode is AvatarMode.LEMONSLICE
+        self._avatar_active = settings.avatar_mode.is_cloud
         self.llm_prompt_tokens = 0
         self.llm_cached_tokens = 0
         self.llm_completion_tokens = 0
