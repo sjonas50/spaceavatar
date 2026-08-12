@@ -44,7 +44,10 @@ fly launch --no-deploy          # accepts existing fly.toml; don't overwrite
 fly secrets set \
   LIVEKIT_URL=... LIVEKIT_API_KEY=... LIVEKIT_API_SECRET=... \
   ANTHROPIC_API_KEY=... DEEPGRAM_API_KEY=... CARTESIA_API_KEY=... \
-  LEMONSLICE_API_KEY=... LEMONSLICE_AGENT_ID=...
+  AVATAR_MODE=anam ANAM_API_KEY=... ANAM_AVATAR_ID=... \
+  TTS_VOICE=...
+# ANAM_AVATAR_ID must be an *avatar* ID, not a persona ID (Anam 400s on
+# persona IDs). LEMONSLICE_API_KEY/AGENT_ID only if AVATAR_MODE=lemonslice.
 fly deploy
 fly logs                        # expect: "registered worker ... region US West B"
 ```
