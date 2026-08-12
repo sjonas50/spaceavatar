@@ -36,6 +36,10 @@ class TestRetrieval:
             ("first spacewalk", "early_spaceflight", "Leonov"),
             ("apollo 13 explosion", "apollo_missions", "oxygen tank"),
             ("black hole picture", "stars_cosmos", "Event Horizon"),
+            ("how do satellites stay in orbit", "satellites_earth_tech", "falling"),
+            ("how does GPS work", "satellites_earth_tech", "atomic clocks"),
+            ("what is space junk", "satellites_earth_tech", "Kessler"),
+            ("starlink internet satellites", "satellites_earth_tech", "Starlink"),
         ],
     )
     def test_finds_relevant_chunk(
