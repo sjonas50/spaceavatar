@@ -1,6 +1,6 @@
-# Commander Sky — Real-Time Astronaut Avatar for Kids
+# Commander Sky — Real-Time Astronaut Avatar
 
-Web app where anyone can have a live voice conversation with a stylized animated astronaut who teaches about Neil Armstrong, Apollo, and space. (Audience changed from kids 5–10 to general public — owner decision 2026-07-17.) LiveKit Agents pipeline: Deepgram Flux STT → safety guards → Claude Sonnet 4.6 → Cartesia TTS → avatar (LemonSlice or frontend-rendered — Phase 2 bake-off decides).
+Web app where anyone can have a live voice conversation with an animated astronaut who teaches about Neil Armstrong, Apollo, and space. (Audience: general public — owner decision 2026-07-17, previously kids 5–10.) LiveKit Agents pipeline: Deepgram Flux STT → safety guards → Claude Sonnet 4.6 → Cartesia TTS → avatar (Anam CARA-4 since 2026-08-12; adapter also supports lemonslice/frontend/none). Deployed: web on Vercel, agent worker on Fly.io.
 
 ## Key Documents
 
@@ -55,15 +55,20 @@ npx playwright test              # e2e
 
 ```
 agent/src/commander_sky/
-  main.py      # AgentSession wiring (STT/LLM/TTS/avatar)
+  main.py      # AgentSession wiring (STT/LLM/TTS/avatar), idle/cost loops
   config.py    # pydantic-settings env config
   models.py    # GuardVerdict, TurnMetrics, SessionLimits
   persona.py   # system prompt builder
-  safety.py    # input guard (Haiku classify), output guard (rules)
-  canned.py    # fixed responses: distress, deflection, fallback
-  avatar.py    # avatar adapter (lemonslice | frontend | none)
-  metrics.py   # per-stage latency, no-content logging
-  facts/       # curated space facts (versioned content)
+  safety.py    # input guard (Haiku classify + speculation), output guard (rules)
+  canned.py    # fixed responses: distress, deflection, fallback, avatar-lost
+  avatar.py    # avatar adapter (lemonslice | anam | frontend | none)
+  sky_agent.py # guarded Agent subclass + tools wiring
+  skytools.py  # live tools: ISS position, launches, NASA images, gallery
+  knowledge/   # mission archive corpus (BM25 retrieval) — 13 curated .md files
+  costs.py     # per-session cost tracker + caps
+  metrics.py   # per-stage latency, TurnLatencyTracker + SLO, no-content logging
+  logging.py   # structlog config (content-free)
+  facts/       # curated space facts (versioned content, in system prompt)
 agent/tests/   # incl. persona_script.yaml (30-question gate)
 web/           # Next.js: token API, session UI, parent gate
 infra/         # Dockerfile context, fly.toml
