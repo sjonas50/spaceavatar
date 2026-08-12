@@ -4,6 +4,7 @@ import { LiveKitRoom, RoomAudioRenderer, useLocalParticipant } from "@livekit/co
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AvatarView } from "@/components/AvatarView";
 import { Captions } from "@/components/Captions";
+import { LatencyHud } from "@/components/LatencyHud";
 import { PushToTalkButton } from "@/components/PushToTalkButton";
 import { SpaceOverlay } from "@/components/SpaceOverlay";
 import { TransmissionBoot } from "@/components/TransmissionBoot";
@@ -25,6 +26,11 @@ export function SessionExperience() {
   const [needsCode, setNeedsCode] = useState(false);
   const [accessCode, setAccessCode] = useState("");
   const [ended, setEnded] = useState(false);
+  // Diagnostic overlay (?lat=1). Lazy init is hydration-safe here: the HUD
+  // only renders inside LiveKitRoom, which mounts after the token fetch.
+  const [showHud] = useState(
+    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).has("lat"),
+  );
   const startedRef = useRef(false);
 
   const start = useCallback(async (code?: string) => {
@@ -158,6 +164,7 @@ export function SessionExperience() {
       className="relative flex min-h-screen flex-col items-center justify-between py-6"
     >
       <SpaceOverlay />
+      {showHud && <LatencyHud />}
       <AvatarView />
       <div className="flex flex-col items-center gap-3 pb-4">
         <Captions />
