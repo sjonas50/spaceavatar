@@ -7,6 +7,7 @@ keyless public APIs with short timeouts and graceful fallbacks: the avatar
 should shrug charmingly, never stall.
 """
 
+import asyncio
 import json
 import time
 import urllib.parse
@@ -111,12 +112,11 @@ async def search_nasa_image(query: str, http: aiohttp.ClientSession | None = Non
 
         # Best-scored candidates first; verify the asset file actually exists —
         # many archive entries have no ~medium rendition (silent 404 otherwise).
+        # Candidates verify concurrently (this runs mid-reply and every
+        # sequential HEAD is audible dead air); preference order still decides.
         candidates = sorted(items, key=score, reverse=True)[:3]
-        for item in candidates:
-            meta = (item.get("data") or [{}])[0]
-            nasa_id = meta.get("nasa_id", "")
-            if not nasa_id:
-                continue
+
+        async def live_src(nasa_id: str) -> str | None:
             # nasa_id comes from the archive API response — encode it so a
             # hostile/odd id can't alter the URL path we fetch and publish.
             safe_id = urllib.parse.quote(nasa_id, safe="")
@@ -124,21 +124,31 @@ async def search_nasa_image(query: str, http: aiohttp.ClientSession | None = Non
                 src = f"{NASA_ASSETS_HOST}/image/{safe_id}/{safe_id}{size}"
                 try:
                     async with session.head(src, allow_redirects=True) as head:
-                        if head.status != 200:
-                            continue
+                        if head.status == 200:
+                            return src
                 except Exception:
                     continue
-                title = meta.get("title", "From the NASA archive")[:120]
-                sent = await publish_ui(
-                    {"type": "show_image", "id": f"nasa:{nasa_id}", "src": src, "caption": title}
-                )
-                if not sent:
-                    return "The screen isn't available right now. Continue without the picture."
-                log.info("nasa_image_shown", nasa_id=nasa_id)
-                return (
-                    f"On screen now: {title}. Keep answering the visitor's actual "
-                    "question — the picture just illustrates it."
-                )
+            return None
+
+        metas = [(item.get("data") or [{}])[0] for item in candidates]
+        checks = await asyncio.gather(
+            *(live_src(meta.get("nasa_id", "")) for meta in metas if meta.get("nasa_id"))
+        )
+        for meta, src in zip((m for m in metas if m.get("nasa_id")), checks, strict=True):
+            if src is None:
+                continue
+            nasa_id = meta["nasa_id"]
+            title = meta.get("title", "From the NASA archive")[:120]
+            sent = await publish_ui(
+                {"type": "show_image", "id": f"nasa:{nasa_id}", "src": src, "caption": title}
+            )
+            if not sent:
+                return "The screen isn't available right now. Continue without the picture."
+            log.info("nasa_image_shown", nasa_id=nasa_id)
+            return (
+                f"On screen now: {title}. Keep answering the visitor's actual "
+                "question — the picture just illustrates it."
+            )
         log.info("nasa_image_no_usable_asset", candidates=len(candidates))
         return "No usable archive imagery for that. Continue without a picture."
     except Exception as exc:
