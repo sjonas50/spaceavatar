@@ -164,6 +164,10 @@ _IDENTITY_LEAK_RE = re.compile(
 )
 _SENTENCE_END_RE = re.compile(r"(?<=[.!?])\s+")
 
+# Sentinel outcomes for _emit: content violation vs. length-cap overflow.
+_BLOCKED = "\x00blocked"
+_TRUNCATED = "\x00truncated"
+
 
 class OutputGuard:
     """Rule-based validation of generated text before it reaches TTS."""
@@ -188,9 +192,11 @@ class OutputGuard:
         """Validate a streaming LLM response sentence-by-sentence.
 
         Clean sentences are yielded as they complete (streaming latency is
-        preserved). On the first violation the remainder is dropped and the
-        canned fallback is spoken instead. Violations are logged as tags only —
-        never the text itself.
+        preserved). A content violation (URL, PII request, identity leak) drops
+        the remainder and speaks the canned fallback instead. The length cap is
+        *not* a safety event: overflow simply ends the reply at the last clean
+        sentence boundary — a short answer, never the fallback line mid-answer.
+        Violations are logged as tags only — never the text itself.
         """
         buffer = ""
         spoken_chars = 0
@@ -199,21 +205,28 @@ class OutputGuard:
             *complete, buffer = _SENTENCE_END_RE.split(buffer)
             for sentence in complete:
                 result = self._emit(sentence, spoken_chars)
-                if result is None:
+                if result is _BLOCKED:
                     yield canned.get_canned(canned.OUTPUT_FALLBACK)
+                    return
+                if result is _TRUNCATED:
                     return
                 spoken_chars += len(result)
                 yield result + " "
         if buffer.strip():
             result = self._emit(buffer, spoken_chars)
-            yield result if result is not None else canned.get_canned(canned.OUTPUT_FALLBACK)
+            if result is _BLOCKED:
+                yield canned.get_canned(canned.OUTPUT_FALLBACK)
+            elif result is not _TRUNCATED:
+                yield result
 
-    def _emit(self, sentence: str, spoken_chars: int) -> str | None:
-        """Validate one sentence; None means blocked (caller speaks the fallback)."""
-        found = self.violations(sentence)
-        if spoken_chars + len(sentence) > self._max_chars:
-            found.append("too_long")
-        if found:
-            log.warning("output_guard_blocked", violations=found)
-            return None
+    def _emit(self, sentence: str, spoken_chars: int) -> str:
+        """Validate one sentence; returns it, or ``_BLOCKED``/``_TRUNCATED``."""
+        content = [v for v in self.violations(sentence) if v != "too_long"]
+        if content:
+            log.warning("output_guard_blocked", violations=content)
+            return _BLOCKED
+        # First sentence always speaks — silence would read as a frozen session.
+        if spoken_chars and spoken_chars + len(sentence) > self._max_chars:
+            log.info("output_truncated_length", spoken_chars=spoken_chars)
+            return _TRUNCATED
         return sentence

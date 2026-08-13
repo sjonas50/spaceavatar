@@ -206,7 +206,20 @@ class TestOutputGuardStream:
         assert result.startswith("The Moon is great.")
         assert "your name" not in result
 
-    async def test_cumulative_length_cap_across_sentences(self) -> None:
+    async def test_cumulative_length_cap_truncates_cleanly(self) -> None:
+        # Length overflow is not a safety event: the reply ends at the last
+        # clean sentence boundary with no fallback line spoken.
         long_sentences = " ".join(["This is a perfectly fine sentence about space rocks."] * 30)
         result = await _collect(OutputGuard(max_chars=120).guard_stream(_stream(long_sentences)))
-        assert canned.get_canned(canned.OUTPUT_FALLBACK) in result
+        assert canned.get_canned(canned.OUTPUT_FALLBACK) not in result
+        assert result.count("space rocks") == 2  # two sentences fit under 120 chars
+        assert len(result) < 200
+
+    async def test_first_sentence_speaks_even_when_over_cap(self) -> None:
+        # A single oversized first sentence still speaks — silence would read
+        # as a frozen session (content rules still apply to it).
+        one_long = "Space rocks are wonderful and " + "very " * 40 + "interesting. Next one!"
+        result = await _collect(OutputGuard(max_chars=50).guard_stream(_stream(one_long)))
+        assert result.startswith("Space rocks are wonderful")
+        assert "Next one" not in result  # overflow after sentence one truncates
+        assert canned.get_canned(canned.OUTPUT_FALLBACK) not in result
