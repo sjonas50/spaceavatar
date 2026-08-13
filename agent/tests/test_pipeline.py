@@ -117,11 +117,19 @@ class TestAvatarDeathFallback:
     """Mid-session avatar death must reroute audio, not freeze the session."""
 
     @staticmethod
-    def _fakes(monkeypatch: pytest.MonkeyPatch):
+    def _fakes(monkeypatch: pytest.MonkeyPatch, visitor_present: bool = True):
+        from livekit import rtc
+
         from commander_sky import main as main_mod
 
         handlers: dict[str, object] = {}
-        room = SimpleNamespace(on=lambda name, cb: handlers.setdefault(name, cb))
+        visitor = SimpleNamespace(
+            kind=rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD, identity="explorer-1234"
+        )
+        room = SimpleNamespace(
+            on=lambda name, cb: handlers.setdefault(name, cb),
+            remote_participants={"explorer-1234": visitor} if visitor_present else {},
+        )
         ctx = SimpleNamespace(room=room)
 
         class FakeOutput:
@@ -162,6 +170,15 @@ class TestAvatarDeathFallback:
     ) -> None:
         session, on_disconnect = self._fakes(monkeypatch)
         on_disconnect(SimpleNamespace(identity="explorer-1234"))
+        await asyncio.sleep(0.01)
+        assert session.output.tail is None
+        assert not session.said
+
+    async def test_teardown_avatar_exit_stays_silent(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Visitor already left: the avatar disconnecting is session teardown,
+        # not a mid-session death — no reroute, no canned line to an empty room.
+        session, on_disconnect = self._fakes(monkeypatch, visitor_present=False)
+        on_disconnect(SimpleNamespace(identity="anam-avatar-agent"))
         await asyncio.sleep(0.01)
         assert session.output.tail is None
         assert not session.said

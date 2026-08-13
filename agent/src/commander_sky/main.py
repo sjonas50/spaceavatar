@@ -180,6 +180,17 @@ async def _idle_nudge_loop(session: AgentSession, settings: Settings) -> None:
             )
 
 
+def _human_count(room: rtc.Room) -> int:
+    # Kind, not identity substring: the agent and avatar join as
+    # PARTICIPANT_KIND_AGENT; a visitor whose random identity happened to
+    # contain "avatar" would previously have been miscounted.
+    return sum(
+        1
+        for p in room.remote_participants.values()
+        if p.kind == rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD
+    )
+
+
 def _watch_visitor_departure(ctx: JobContext, session: AgentSession) -> None:
     """End the session the moment no human participants remain in the room.
 
@@ -189,18 +200,8 @@ def _watch_visitor_departure(ctx: JobContext, session: AgentSession) -> None:
 
     close_task: list[asyncio.Task] = []  # keep a reference so the task isn't GC'd
 
-    def _human_count() -> int:
-        # Kind, not identity substring: the agent and avatar join as
-        # PARTICIPANT_KIND_AGENT; a visitor whose random identity happened to
-        # contain "avatar" would previously have been miscounted.
-        return sum(
-            1
-            for p in ctx.room.remote_participants.values()
-            if p.kind == rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD
-        )
-
     def _on_disconnect(_participant: object) -> None:
-        if _human_count() == 0 and not close_task:
+        if _human_count(ctx.room) == 0 and not close_task:
             log.info("visitor_left_ending_session")
             close_task.append(asyncio.create_task(session.aclose()))
 
@@ -233,6 +234,11 @@ def _watch_avatar_departure(ctx: JobContext, session: AgentSession, avatar_ident
 
     def _on_disconnect(participant: rtc.RemoteParticipant) -> None:
         if participant.identity != avatar_identity or fallback_task:
+            return
+        if _human_count(ctx.room) == 0:
+            # Teardown, not an avatar death: the visitor left first and the
+            # avatar is disconnecting as the session closes. Rerouting here
+            # would speak the canned line to an empty room.
             return
         log.warning("avatar_lost_voice_only_fallback")
         fallback_task.append(asyncio.create_task(_reroute()))
