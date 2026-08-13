@@ -100,9 +100,10 @@ class Settings(BaseSettings):
     idle_nudge_max: int = Field(default=2, ge=0)
     # Cost control: end the session after this many quiet seconds (an open tab
     # otherwise streams avatar + STT until the session cap). 0 disables.
-    # 90s = two 30s nudges, then sign-off — tightened from 180s (owner
-    # decision 2026-08-12, avatar minutes are the dominant cost).
-    idle_shutdown_s: float = Field(default=90.0, ge=0.0)
+    # 180s: two 30s nudges, then room to look/think — loosened from 90s after
+    # it signed off on a browsing visitor (owner decision 2026-08-13; the
+    # earlier 90s tightening was owner 2026-08-12).
+    idle_shutdown_s: float = Field(default=180.0, ge=0.0)
 
     # Cost rates (USD) for the per-session estimate — keep in sync with vendor
     # pricing; env-overridable so price changes don't need a code change.
