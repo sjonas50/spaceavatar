@@ -84,7 +84,29 @@ async def show_image(image_id: str) -> str:
     )
 
 
+# Background publish tasks, kept alive until done (asyncio holds weak refs).
+_publish_tasks: set[asyncio.Task] = set()
+
+
 async def search_nasa_image(query: str, http: aiohttp.ClientSession | None = None) -> str:
+    """Kick off the archive search in the background and return immediately.
+
+    The search + asset verification takes 1.5-3s of network time; awaiting it
+    inside the tool call was audible dead air in the middle of every image
+    answer (measured 2026-08-13: ~7.5s perceived on image turns). The picture
+    now pops onto the screen whenever it's ready while the reply continues.
+    """
+    task = asyncio.create_task(_search_and_publish(query, http))
+    _publish_tasks.add(task)
+    task.add_done_callback(_publish_tasks.discard)
+    return (
+        "Archive search started — if good imagery exists it will appear on the "
+        "visitor's screen by itself in a few seconds. Answer the question now; "
+        "don't mention the search and don't promise a picture."
+    )
+
+
+async def _search_and_publish(query: str, http: aiohttp.ClientSession | None = None) -> str:
     """Search NASA's public image library and push the best hit to the screen.
 
     Only images-assets.nasa.gov URLs are ever published (the client enforces

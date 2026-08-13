@@ -1,5 +1,6 @@
 """Interactive tools: gallery integrity, publish fallback, live-data caching."""
 
+import asyncio
 from pathlib import Path
 
 import pytest
@@ -106,13 +107,13 @@ class TestNasaImageSearch:
             return True
 
         monkeypatch.setattr(skytools, "publish_ui", fake_publish)
-        result = await skytools.search_nasa_image("uranus voyager", _FakeHttp(self._payload()))  # type: ignore[arg-type]
+        result = await skytools._search_and_publish("uranus voyager", _FakeHttp(self._payload()))  # type: ignore[arg-type]
         assert sent and sent[0]["id"] == "nasa:PIA18182"
         assert sent[0]["src"].startswith("https://images-assets.nasa.gov/image/")
         assert "Uranus" in result
 
     async def test_no_results_degrades(self) -> None:
-        result = await skytools.search_nasa_image("x", _FakeHttp({"collection": {"items": []}}))  # type: ignore[arg-type]
+        result = await skytools._search_and_publish("x", _FakeHttp({"collection": {"items": []}}))  # type: ignore[arg-type]
         assert "Continue without" in result
 
     async def test_api_failure_degrades(self) -> None:
@@ -120,7 +121,7 @@ class TestNasaImageSearch:
             def get(self, url: str, params: dict | None = None):
                 raise OSError("down")
 
-        result = await skytools.search_nasa_image("uranus", _Boom())  # type: ignore[arg-type]
+        result = await skytools._search_and_publish("uranus", _Boom())  # type: ignore[arg-type]
         assert "Continue without" in result
 
     async def test_dead_asset_falls_back_to_next_candidate(
@@ -143,15 +144,41 @@ class TestNasaImageSearch:
             }
         }
         http = _FakeHttp(payload, dead_assets={"webb-dead"})
-        result = await skytools.search_nasa_image("james webb space telescope", http)  # type: ignore[arg-type]
+        result = await skytools._search_and_publish("james webb space telescope", http)  # type: ignore[arg-type]
         assert sent and sent[0]["id"] == "nasa:webb-good"
         assert "On screen now" in result
 
     async def test_all_assets_dead_degrades(self) -> None:
         payload = {"collection": {"items": [{"data": [{"nasa_id": "x1", "title": "a"}]}]}}
         http = _FakeHttp(payload, dead_assets={"x1"})
-        result = await skytools.search_nasa_image("anything", http)  # type: ignore[arg-type]
+        result = await skytools._search_and_publish("anything", http)  # type: ignore[arg-type]
         assert "Continue without" in result
+
+    async def test_tool_returns_instantly_and_publishes_in_background(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The tool must never block the reply on network time — the search
+        runs as a background task and the picture arrives on its own."""
+        sent: list[dict] = []
+
+        async def fake_publish(payload: dict) -> bool:
+            sent.append(payload)
+            return True
+
+        monkeypatch.setattr(skytools, "publish_ui", fake_publish)
+        result = await skytools.search_nasa_image("uranus voyager", _FakeHttp(self._payload()))  # type: ignore[arg-type]
+        assert "don't promise a picture" in result
+        assert not sent  # nothing published yet — the tool didn't wait
+        await asyncio.gather(*skytools._publish_tasks)
+        assert sent and sent[0]["id"] == "nasa:PIA18182"
+
+    async def test_background_failure_never_raises(self) -> None:
+        class _Boom:
+            def get(self, url: str, params: dict | None = None):
+                raise OSError("down")
+
+        await skytools.search_nasa_image("uranus", _Boom())  # type: ignore[arg-type]
+        await asyncio.gather(*skytools._publish_tasks)  # degrades quietly, no exception
 
 
 class TestLiveData:

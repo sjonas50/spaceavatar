@@ -134,12 +134,14 @@ class CommanderSkyAgent(Agent):
 
     @function_tool
     async def show_nasa_image(self, query: str) -> str:
-        """Search NASA's image archive and show a picture for topics NOT in your gallery.
+        """Start an archive search that shows a picture for topics NOT in your gallery.
 
         Use for any space subject show_picture can't cover — Uranus, nebulae,
         specific missions, telescopes, rovers. Query with 2-4 concrete words
         (e.g. "Uranus Voyager", "Crab Nebula Hubble", "Perseverance rover").
-        Prefer show_picture when the topic is in its gallery.
+        Prefer show_picture when the topic is in its gallery. Returns
+        instantly; the picture appears on its own a few seconds later, so keep
+        answering and never mention the search or promise a picture.
         """
         return await skytools.search_nasa_image(query)
 
