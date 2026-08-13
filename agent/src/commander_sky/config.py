@@ -92,7 +92,20 @@ class Settings(BaseSettings):
     # Flux eager end-of-turn confidence (0.3-0.9). Fires a provisional
     # end-of-turn early so the LLM starts before the turn is confirmed —
     # required for preemptive generation in STT mode. <=0 disables.
+    # 0.6 is measured-optimal (2026-08-13, probe A/B): 5/5 turns committed
+    # preemptive generation with ~0.4s lead. Lower thresholds are a trap —
+    # Flux's eager fires once per turn, and at 0.4/0.5 its confidence crosses
+    # transiently mid-utterance, so the eager spends itself on a partial
+    # transcript and the real end-of-turn falls back to serial (1/5 and 0/5
+    # commits). Don't lower this expecting more overlap.
     eager_eot_threshold: float = Field(default=0.6, ge=0.0, le=0.9)
+    # Flux end-of-turn *confirm* confidence (0.5-0.9; plugin default 0.7 when
+    # unset). Raising it widens the eager→confirm window so the preemptive
+    # LLM+TTS run has longer to finish before she may speak — but the later
+    # confirm eats what the overlap buys: 0.8 measured a wash on perceived
+    # latency (2026-08-13 probe, anam mode). Left off; knob kept for tuning
+    # against real visitors.
+    flux_eot_threshold: float = Field(default=0.0, ge=0.0, le=0.9)
 
     # Proactive engagement: after this many quiet seconds the avatar offers a
     # fun fact or the quiz, at most idle_nudge_max times in a row. 0 disables.

@@ -97,6 +97,8 @@ def build_session(settings: Settings) -> AgentSession:
     stt_kwargs: dict = {}
     if settings.eager_eot_threshold > 0:
         stt_kwargs["eager_eot_threshold"] = settings.eager_eot_threshold
+    if settings.flux_eot_threshold > 0:
+        stt_kwargs["eot_threshold"] = settings.flux_eot_threshold
 
     return AgentSession(
         stt=deepgram.STTv2(
@@ -127,7 +129,11 @@ def build_session(settings: Settings) -> AgentSession:
             # preemptive_tts starts synthesis before the turn is confirmed;
             # combined with Flux eager EOT this overlaps LLM+TTS with the tail
             # of the user's utterance instead of waiting for confirmation.
-            "preemptive_generation": {"enabled": True, "preemptive_tts": True},
+            # max_retries raised from 3: sub-0.6 eager thresholds fire on mid-
+            # sentence pauses too, and each cancelled attempt burns a retry —
+            # at the default cap the real end-of-turn often found the budget
+            # already spent and fell back to a fully serial turn.
+            "preemptive_generation": {"enabled": True, "preemptive_tts": True, "max_retries": 6},
         },
     )
 

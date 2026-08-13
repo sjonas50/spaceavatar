@@ -118,6 +118,28 @@ turns 2–6 are the sample. Local agent, local `next dev`, same machine.
   attacking Flux EOT and the delivery path**; the avatar choice is currently
   irrelevant to latency.
 
+## Preemptive generation — 2026-08-13 (probe A/B, tuning map)
+
+Discovery: preemptive generation (LLM + TTS started on Flux's *eager*
+end-of-turn, before the turn is confirmed) was already enabled in
+`build_session` and **commits reliably in anam mode: 5/5 turns** (twice
+reproduced), median lead ~0.3s. It is erratic in `AVATAR_MODE=none` probe
+runs (0–2/5) — Flux appears to skip the eager event when confidence jumps
+straight past the confirm threshold on crisp synthetic speech.
+
+Tuning map (all anam-mode probe runs, n=5–6 each — don't re-learn these):
+
+| knob | tried | result |
+|---|---|---|
+| `eager_eot_threshold` 0.6 → 0.4/0.5 | commits collapsed to 1/5 and 0/5 | Flux eager is one-shot per turn; low thresholds spend it mid-utterance on a partial transcript. **Keep 0.6.** |
+| preemptive `max_retries` 3 → 6 | kept | headroom so pause-triggered false eagers can't exhaust the budget on real (human) speech; a discarded attempt costs one ~90%-cached LLM call |
+| `eot_threshold` (confirm) 0.7 → 0.8 | leads grew (~0.55s median) but perceived p50 unchanged (~4.3s vs ~4.4s) | later confirm eats what the longer overlap buys — first-order wash. Knob exposed as `FLUX_EOT_THRESHOLD`, left off. |
+
+Remaining structure of a plain turn: ~1.0s Flux wait (0.3s of it now
+overlapped) + ~0.9s exposed Sonnet TTFT + TTFB + delivery. **The next real
+levers are the image-turn second round-trip (~2s, make the tool async), the
+delivery path, and TTFT itself — not turn-detection tuning.**
+
 ### Caveats
 
 - n=5 per run, single machine, same-day network; deltas <500ms between runs
