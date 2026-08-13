@@ -145,15 +145,28 @@ async def _idle_nudge_loop(session: AgentSession, settings: Settings) -> None:
         return
     state = {"last_user_speech": asyncio.get_running_loop().time(), "nudges_in_a_row": 0}
 
+    def _reset_clock() -> None:
+        state["last_user_speech"] = asyncio.get_running_loop().time()
+        state["nudges_in_a_row"] = 0
+
     def _on_item(ev: object) -> None:
         if getattr(getattr(ev, "item", None), "role", None) == "user":
-            state["last_user_speech"] = asyncio.get_running_loop().time()
-            state["nudges_in_a_row"] = 0
+            _reset_clock()
+
+    def _on_user_state(ev: object) -> None:
+        # Reset on speech *start*, not just the committed transcript: the
+        # committed item lands only at end-of-turn, so a nudge could fire mid-
+        # question and speak right over the visitor (seen 2026-08-13 on iPad).
+        if getattr(ev, "new_state", None) == "speaking":
+            _reset_clock()
 
     session.on("conversation_item_added", _on_item)
+    session.on("user_state_changed", _on_user_state)
 
     while True:
         await asyncio.sleep(5)
+        if session.user_state == "speaking":
+            continue  # never nudge or sign off over a visitor mid-sentence
         quiet_for = asyncio.get_running_loop().time() - state["last_user_speech"]
 
         if 0 < settings.idle_shutdown_s <= quiet_for:
