@@ -45,3 +45,15 @@ test("parent gate requires hold then math", async ({ page }) => {
   await page.getByTestId("math-submit").click();
   await expect(page.getByRole("heading", { name: "Parent settings" })).toBeVisible();
 });
+
+test("five corner taps arm the latency HUD, five more disarm it", async ({ page }) => {
+  await page.goto("/");
+  const hotspot = page.getByTestId("hud-hotspot");
+  for (let i = 0; i < 5; i++) await hotspot.dispatchEvent("pointerdown");
+  await expect(page.getByTestId("hud-armed")).toBeVisible();
+  // Sticky across reloads (localStorage), no query param needed.
+  await page.reload();
+  await expect(page.getByTestId("hud-armed")).toBeVisible();
+  for (let i = 0; i < 5; i++) await hotspot.dispatchEvent("pointerdown");
+  await expect(page.getByTestId("hud-armed")).toHaveCount(0);
+});

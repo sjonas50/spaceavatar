@@ -26,10 +26,48 @@ export function SessionExperience() {
   const [needsCode, setNeedsCode] = useState(false);
   const [accessCode, setAccessCode] = useState("");
   const [ended, setEnded] = useState(false);
-  // Diagnostic overlay (?lat=1). Lazy init is hydration-safe here: the HUD
-  // only renders inside LiveKitRoom, which mounts after the token fetch.
-  const [showHud] = useState(
-    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).has("lat"),
+  // Diagnostic latency overlay. Armed by ?lat=1/?lat=0 or by 5 quick taps on
+  // the top-left corner hotspot (URL queries are easy to lose on iPad Safari),
+  // and sticky across reloads. Lazy init is hydration-safe here: everything
+  // gated on it renders only after client-side state changes.
+  const [showHud, setShowHud] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const lat = new URLSearchParams(window.location.search).get("lat");
+    if (lat === "0") localStorage.removeItem("sky-hud");
+    else if (lat !== null) localStorage.setItem("sky-hud", "1");
+    return localStorage.getItem("sky-hud") === "1";
+  });
+  const hudTaps = useRef<number[]>([]);
+  const onHudHotspot = useCallback(() => {
+    const now = performance.now();
+    hudTaps.current = [...hudTaps.current.filter((t) => now - t < 1500), now];
+    if (hudTaps.current.length >= 5) {
+      hudTaps.current = [];
+      setShowHud((on) => {
+        if (on) localStorage.removeItem("sky-hud");
+        else localStorage.setItem("sky-hud", "1");
+        return !on;
+      });
+    }
+  }, []);
+  const hudHotspot = (
+    <>
+      <button
+        aria-hidden="true"
+        tabIndex={-1}
+        data-testid="hud-hotspot"
+        onPointerDown={onHudHotspot}
+        className="fixed left-0 top-0 z-40 h-16 w-16 opacity-0"
+      />
+      {showHud && !details && (
+        <p
+          data-testid="hud-armed"
+          className="fixed left-2 top-2 z-40 rounded bg-slate-950/80 px-2 py-1 font-mono text-[10px] text-emerald-300"
+        >
+          HUD armed
+        </p>
+      )}
+    </>
   );
   const startedRef = useRef(false);
 
@@ -65,6 +103,7 @@ export function SessionExperience() {
   if (!details) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-8 px-6 text-center">
+        {hudHotspot}
         <div>
           <p className="mb-4 font-mono text-xs uppercase tracking-[0.35em] text-cyan-400/80">
             Orbital Exhibit 01 · Live from low Earth orbit
@@ -163,6 +202,7 @@ export function SessionExperience() {
       }}
       className="relative flex min-h-screen flex-col items-center justify-between py-6"
     >
+      {hudHotspot}
       <SpaceOverlay />
       {showHud && <LatencyHud />}
       <AvatarView />
