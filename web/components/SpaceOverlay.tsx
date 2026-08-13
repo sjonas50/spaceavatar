@@ -62,14 +62,14 @@ export function SpaceOverlay() {
     <button
       aria-label={`Dismiss picture: ${image.caption}`}
       onClick={() => setImage(null)}
-      className="absolute right-4 top-4 z-10 w-[42vw] max-w-md overflow-hidden rounded-2xl border border-cyan-400/25 bg-slate-950/85 shadow-[0_0_50px_rgba(34,211,238,0.15)] backdrop-blur transition-transform hover:scale-[1.02]"
+      className="absolute right-3 top-3 z-10 w-[clamp(10rem,30vw,24rem)] overflow-hidden rounded-2xl border border-cyan-400/25 bg-slate-950/85 shadow-[0_0_50px_rgba(34,211,238,0.15)] backdrop-blur transition-transform hover:scale-[1.02]"
     >
       <Image
         src={image.src}
         alt={image.caption}
         width={640}
         height={480}
-        className="h-auto w-full object-cover"
+        className="h-auto max-h-[35vh] w-full object-contain"
         priority
         onError={() => setImage(null)} // broken asset: vanish, don't show a dead frame
       />
